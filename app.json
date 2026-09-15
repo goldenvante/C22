@@ -32,6 +32,21 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      "expo-sqlite",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que Comité C22 use la cámara para escanear los códigos QR de los boletos."
+        }
+      ],
+      "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Permitir que Comité C22 guarde tu boleto digital en Fotos."
+        }
       ]
     ],
     "experiments": {

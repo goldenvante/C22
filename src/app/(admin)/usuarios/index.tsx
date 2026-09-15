@@ -1,0 +1,189 @@
+import { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useFocusEffect } from "expo-router";
+
+import { BackHeader } from "@/components/back-header";
+import { useAuth } from "@/auth/AuthProvider";
+import { C22 } from "@/constants/theme";
+import { eventStyles as s } from "@/features/events/eventStyles";
+import { listStaff, ROL_LABEL, setActivo, updateNombre } from "@/features/users/api";
+import type { Profile } from "@/lib/supabase";
+
+export default function UsersScreen() {
+  const { profile: self } = useAuth();
+  const [users, setUsers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editNombre, setEditNombre] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setError(null);
+      setUsers(await listStaff());
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
+  async function handleToggle(user: Profile) {
+    const next = !user.activo;
+    const apply = async () => {
+      setBusyId(user.id);
+      setError(null);
+      try {
+        await setActivo(user.id, next);
+        await load();
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setBusyId(null);
+      }
+    };
+    if (!next) {
+      Alert.alert(
+        "Desactivar usuario",
+        `¿Desactivar a ${user.nombre} (@${user.usuario})? No podrá iniciar sesión.`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Desactivar", style: "destructive", onPress: apply },
+        ],
+      );
+    } else {
+      await apply();
+    }
+  }
+
+  async function handleSaveNombre(user: Profile) {
+    setBusyId(user.id);
+    setError(null);
+    try {
+      await updateNombre(user.id, editNombre);
+      setEditingId(null);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <View style={s.screen}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+        <View style={[s.scroll, { flex: 1 }]}>
+          <Text style={s.screenTitle}>Usuarios</Text>
+          <View style={s.goldRule} />
+          <BackHeader fallback="/(admin)" />
+
+          {loading ? (
+            <ActivityIndicator color={C22.wine} />
+          ) : (
+            <FlatList
+              data={users}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
+              ListHeaderComponent={error ? <Text style={s.error}>{error}</Text> : null}
+              ListEmptyComponent={
+                !error ? <Text style={s.meta}>Aún no hay usuarios registrados.</Text> : null
+              }
+              renderItem={({ item }) => {
+                const isSelf = item.id === self?.id;
+                const busy = busyId === item.id;
+                return (
+                  <View style={s.card}>
+                    {editingId === item.id ? (
+                      <View style={{ gap: 4 }}>
+                        <TextInput
+                          value={editNombre}
+                          onChangeText={setEditNombre}
+                          placeholderTextColor={C22.inkSoft}
+                          editable={!busy}
+                          style={s.input}
+                        />
+                        <View style={s.row}>
+                          <Pressable
+                            disabled={busy}
+                            onPress={() => handleSaveNombre(item)}
+                            style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+                            <Text style={s.secondaryButtonText}>Guardar</Text>
+                          </Pressable>
+                          <Pressable disabled={busy} onPress={() => setEditingId(null)}>
+                            <Text style={s.link}>Cancelar</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={{ gap: 2 }}>
+                        <View style={s.row}>
+                          <Text style={[s.smallBold, { flex: 1 }]}>{item.nombre}</Text>
+                          <Text style={item.activo ? s.faseOn : s.faseOff}>
+                            {item.activo ? "Activo" : "Inactivo"}
+                          </Text>
+                        </View>
+                        <Text style={s.meta}>@{item.usuario}</Text>
+                        <Text style={s.meta}>{ROL_LABEL[item.rol]}</Text>
+                        <View style={[s.row, { marginTop: 6 }]}>
+                          <Pressable
+                            disabled={busy}
+                            onPress={() => {
+                              setEditingId(item.id);
+                              setEditNombre(item.nombre);
+                              setError(null);
+                            }}
+                            style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+                            <Text style={s.secondaryButtonText}>Editar nombre</Text>
+                          </Pressable>
+                          <Pressable
+                            disabled={busy || isSelf}
+                            onPress={() => handleToggle(item)}
+                            style={({ pressed }) => [
+                              s.secondaryButton,
+                              { opacity: pressed || busy || isSelf ? 0.5 : 1 },
+                            ]}>
+                            <Text style={s.secondaryButtonText}>
+                              {item.activo ? "Desactivar" : "Activar"}
+                            </Text>
+                          </Pressable>
+                        </View>
+                        {isSelf ? <Text style={s.meta}>Esta es tu cuenta.</Text> : null}
+                      </View>
+                    )}
+                  </View>
+                );
+              }}
+            />
+          )}
+
+          <Pressable
+            onPress={() => router.push("/(admin)/usuarios/nuevo")}
+            style={({ pressed }) => [s.primaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+            <Text style={s.primaryButtonText}>+ Nuevo usuario</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}

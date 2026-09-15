@@ -63,3 +63,21 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+/**
+ * Paleta Comité C22: wine/borgoña sobre cream, estética editorial cálida.
+ * El módulo de Eventos usa estos colores de forma explícita (fijos, sin
+ * depender del modo claro/oscuro del sistema) para garantizar contraste.
+ */
+export const C22 = {
+  wine: "#8B263D",
+  accent: "#C96872",
+  cream: "#F7EFE3",
+  softPink: "#F1D9DC",
+  ink: "#3A2928",
+  gold: "#B9965A",
+  success: "#58745D",
+  danger: "#A94452",
+  creamLight: "#FDF8EE",
+  inkSoft: "#7A6563",
+} as const;

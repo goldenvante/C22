@@ -1,98 +1,208 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAuth } from "@/auth/AuthProvider";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { MaxContentWidth, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/use-theme";
+import { loginEmailForUsuario, supabase } from "@/lib/supabase";
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
+function friendlyAuthError(message: string): string {
+  if (/invalid login credentials/i.test(message)) {
+    return "Usuario o contraseña incorrectos.";
   }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
+  if (/email not confirmed/i.test(message)) {
+    return "Tu cuenta aún no está confirmada. Contacta al administrador.";
   }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
+  if (/too many requests|rate limit/i.test(message)) {
+    return "Demasiados intentos. Espera un momento e inténtalo de nuevo.";
+  }
+  if (/network|fetch|failed/i.test(message)) {
+    return "Sin conexión. Revisa tu internet e inténtalo de nuevo.";
+  }
+  return "No se pudo iniciar sesión. Inténtalo de nuevo.";
 }
 
-export default function HomeScreen() {
+export default function LoginScreen() {
+  const theme = useTheme();
+  const { session, profile, loading: authLoading, notice, clearNotice, signOut, requiresPasswordChange } = useAuth();
+  const [usuario, setUsuario] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit() {
+    clearNotice();
+    setError(null);
+    const u = usuario.trim().toLowerCase();
+    if (!u || !password) {
+      setError("Escribe tu usuario y tu contraseña.");
+      return;
+    }
+    if (!/^[a-z0-9._-]{1,32}$/.test(u)) {
+      setError("Usuario inválido. Usa letras, números, punto, guion o guion bajo.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: loginEmailForUsuario(u),
+        password,
+      });
+      if (signInError) setError(friendlyAuthError(signInError.message));
+      // Si es válido, el RouteGate redirige según el rol. No navegar aquí.
+    } catch {
+      setError("Sin conexión. Revisa tu internet e inténtalo de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Con cambio obligatorio pendiente, el gate mueve a /cambiar-password:
+  // loader aquí también para no mostrar el formulario ni el enlace de salida.
+  if (authLoading || (session && (profile || requiresPasswordChange))) {
+    return (
+      <ThemedView style={styles.center}>
+        <ActivityIndicator />
+      </ThemedView>
+    );
+  }
+
+  const message = error ?? notice;
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.form}>
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            Comité C22
           </ThemedText>
-        </ThemedView>
+          <ThemedText themeColor="textSecondary" style={styles.subtitle}>
+            Inicia sesión con tu usuario
+          </ThemedText>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+          <ThemedText type="smallBold">Usuario</ThemedText>
+          <TextInput
+            value={usuario}
+            onChangeText={setUsuario}
+            placeholder="p. ej. adminc22"
+            placeholderTextColor={theme.textSecondary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!busy}
+            onSubmitEditing={onSubmit}
+            style={[
+              styles.input,
+              { color: theme.text, borderColor: theme.textSecondary, backgroundColor: theme.backgroundElement },
+            ]}
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
 
-        {Platform.OS === 'web' && <WebBadge />}
+          <ThemedText type="smallBold">Contraseña</ThemedText>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Tu contraseña"
+            placeholderTextColor={theme.textSecondary}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!busy}
+            onSubmitEditing={onSubmit}
+            style={[
+              styles.input,
+              { color: theme.text, borderColor: theme.textSecondary, backgroundColor: theme.backgroundElement },
+            ]}
+          />
+
+          {message ? (
+            <ThemedText type="small" style={styles.error}>
+              {message}
+            </ThemedText>
+          ) : null}
+
+          <Pressable
+            onPress={onSubmit}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.button,
+              { backgroundColor: theme.text, opacity: busy || pressed ? 0.7 : 1 },
+            ]}>
+            {busy ? (
+              <ActivityIndicator color={theme.background} />
+            ) : (
+              <ThemedText type="smallBold" style={{ color: theme.background }}>
+                Iniciar sesión
+              </ThemedText>
+            )}
+          </Pressable>
+
+          {session && !profile && !requiresPasswordChange ? (
+            <Pressable onPress={signOut} style={styles.linkButton}>
+              <ThemedText type="link">Usar otra cuenta</ThemedText>
+            </Pressable>
+          ) : null}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    flexDirection: "row",
+    justifyContent: "center",
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
     maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
     paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    justifyContent: "center",
+  },
+  form: {
+    gap: Spacing.two,
   },
   title: {
-    textAlign: 'center',
+    textAlign: "center",
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    textAlign: "center",
+    marginBottom: Spacing.three,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
+  input: {
+    borderWidth: 1,
+    borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    paddingVertical: Spacing.two,
+    fontSize: 16,
+  },
+  error: {
+    color: "#D64545",
+  },
+  button: {
+    marginTop: Spacing.two,
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.three,
+    alignItems: "center",
+  },
+  linkButton: {
+    alignItems: "center",
+    paddingVertical: Spacing.two,
   },
 });
