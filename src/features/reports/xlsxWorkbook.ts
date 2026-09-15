@@ -387,51 +387,69 @@ export type ReportRow = {
 };
 
 /**
- * Hoja "Reporte de ventas": cabecera C22, meta de filtros, RESUMEN en
- * tarjetas-tabla, DETALLE con wrap + autofiltro + encabezado congelado y
- * bloque final de TOTALES calculado de las mismas filas mostradas.
+ * Reporte de ventas en 4 hojas ordenadas para lectura lógica:
+ * 1. "Resumen": títulos, filtros aplicados en tabla, KPIs y totales.
+ * 2. "Detalle": tabla de boletos con wrap + autofiltro + encabezado congelado.
+ * 3. "Por vendedor": agrupación de vigentes (ingresos sin cortesías).
+ * 4. "Por fase": agrupación de vigentes (ingresos sin cortesías).
+ * Las agrupaciones espejan la lógica del PDF (exportReportPdf en xlsx.ts).
  */
 export function buildReportSheets(
   meta: { evento: string; periodo: string; generado: string },
   rows: ReportRow[],
 ): CierreSheet[] {
-  const out: CellDef[][] = [];
-  const hts: (number | undefined)[] = [];
-  const push = (row: CellDef[], ht?: number) => {
-    out.push(row);
-    hts.push(ht);
-  };
-
-  push([{ t: "s", v: "COMITÉ C22", style: 3 }]);
-  push([{ t: "s", v: "REPORTE DE VENTAS", style: 3 }]);
-  push([{ t: "s", v: `Evento: ${meta.evento}` }]);
-  push([{ t: "s", v: `Periodo: ${meta.periodo}` }]);
-  push([{ t: "s", v: `Generado: ${meta.generado}` }]);
-  push([{ t: "s", v: "RESUMEN", style: 4 }]);
-
   const vigentes = rows.filter((r) => r.estado !== "Cancelado");
   const vendidos = vigentes.length;
-  const ingresos = vigentes.reduce((a, r) => a + (Number.isFinite(r.precio) ? r.precio : 0), 0);
-  const kpis: [string, string][] = [
-    ["Boletos vendidos", String(vendidos)],
-    ["Ingresos", `$${ingresos.toFixed(2)}`],
-    ["Cortesías", String(vigentes.filter((r) => r.cortesia).length)],
-    ["Utilizados", String(rows.filter((r) => r.estado === "Utilizado").length)],
-    ["Cancelados", String(rows.filter((r) => r.estado === "Cancelado").length)],
+  // Ingresos sin cortesías (igual que el resumen en pantalla y el PDF).
+  const ingresos = vigentes.reduce((a, r) => a + (r.cortesia || !Number.isFinite(r.precio) ? 0 : r.precio), 0);
+  const ingresos2 = Math.round(ingresos * 100) / 100;
+  const nCortesias = vigentes.filter((r) => r.cortesia).length;
+  const nUtilizados = rows.filter((r) => r.estado === "Utilizado").length;
+  const nCancelados = rows.filter((r) => r.estado === "Cancelado").length;
+
+  // ---- Hoja 1: Resumen ----
+  const resumen: CellDef[][] = [];
+  resumen.push([{ t: "s", v: "COMITÉ C22", style: 3 }]);
+  resumen.push([{ t: "s", v: "REPORTE DE VENTAS", style: 3 }]);
+  resumen.push([{ t: "s", v: "FILTROS APLICADOS", style: 4 }]);
+  resumen.push([
+    { t: "s", v: "Filtro", style: 1 },
+    { t: "s", v: "Valor", style: 1 },
+  ]);
+  resumen.push([{ t: "s", v: "Evento" }, { t: "s", v: meta.evento, style: 5 }]);
+  resumen.push([{ t: "s", v: "Periodo" }, { t: "s", v: meta.periodo, style: 5 }]);
+  resumen.push([{ t: "s", v: "Generado" }, { t: "s", v: meta.generado, style: 5 }]);
+  resumen.push([{ t: "s", v: "RESUMEN", style: 4 }]);
+  resumen.push([
+    { t: "s", v: "Concepto", style: 1 },
+    { t: "s", v: "Valor", style: 1 },
+  ]);
+  const kpis: [string, CellDef][] = [
+    ["Boletos vendidos", { t: "n", v: vendidos }],
+    ["Ingresos", { t: "n", v: ingresos2, style: 2 }],
+    ["Cortesías", { t: "n", v: nCortesias }],
+    ["Utilizados", { t: "n", v: nUtilizados }],
+    ["Cancelados", { t: "n", v: nCancelados }],
   ];
   for (const [label, value] of kpis) {
-    push([
-      { t: "s", v: label, style: 4 },
-      { t: "s", v: value, style: 4 },
-    ]);
+    resumen.push([{ t: "s", v: label }, value]);
   }
+  resumen.push([{ t: "s", v: "TOTALES", style: 4 }]);
+  resumen.push([{ t: "s", v: "TOTAL DE BOLETOS:", style: 4 }, { t: "n", v: vendidos, style: 4 }]);
+  resumen.push([{ t: "s", v: "TOTAL INGRESOS:", style: 4 }, { t: "n", v: ingresos2, style: 2 }]);
 
-  push([{ t: "s", v: "DETALLE DE VENTAS", style: 4 }]);
-  const headerIdx = out.length + 1; // 1-based
+  // ---- Hoja 2: Detalle ----
+  const detalle: CellDef[][] = [];
+  const detHts: (number | undefined)[] = [];
+  const pushD = (row: CellDef[], ht?: number) => {
+    detalle.push(row);
+    detHts.push(ht);
+  };
+  pushD([{ t: "s", v: `DETALLE DE VENTAS (${rows.length})`, style: 3 }]);
   const head = ["Folio", "Evento", "Etapa", "Comprador", "Vendedor", "Precio", "Método de pago", "Fecha de venta", "Estado", "Tipo"];
-  push(head.map((h) => ({ t: "s" as const, v: h, style: 1 })));
+  pushD(head.map((h) => ({ t: "s" as const, v: h, style: 1 })));
   for (const r of rows) {
-    push(
+    pushD(
       [
         { t: "s", v: r.folio },
         { t: "s", v: r.evento, style: 5 },
@@ -448,17 +466,53 @@ export function buildReportSheets(
     );
   }
 
-  push([{ t: "s", v: "TOTALES", style: 4 }]);
-  push([{ t: "s", v: "TOTAL DE BOLETOS:", style: 4 }, { t: "n", v: vendidos, style: 4 }]);
-  push([{ t: "s", v: "TOTAL INGRESOS:", style: 4 }, { t: "n", v: Math.round(ingresos * 100) / 100, style: 2 }]);
+  // ---- Hojas 3 y 4: agrupaciones (espejan el PDF) ----
+  type Grupo = { label: string; n: number; ing: number };
+  const agrupar = (clave: (r: ReportRow) => string): Grupo[] => {
+    const map = new Map<string, Grupo>();
+    for (const r of vigentes) {
+      const key = clave(r);
+      const g = map.get(key) ?? { label: key, n: 0, ing: 0 };
+      g.n += 1;
+      if (!r.cortesia && Number.isFinite(r.precio)) g.ing += r.precio;
+      map.set(key, g);
+    }
+    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label, "es"));
+  };
+  const grupoSheet = (titulo: string, nombre: string, primeraCol: string, grupos: Grupo[]): CierreSheet => {
+    const grows: CellDef[][] = [
+      [{ t: "s", v: titulo, style: 3 }],
+      [
+        { t: "s", v: primeraCol, style: 1 },
+        { t: "s", v: "Boletos", style: 1 },
+        { t: "s", v: "Ingresos", style: 1 },
+      ],
+    ];
+    for (const g of grupos) {
+      grows.push([
+        { t: "s", v: g.label },
+        { t: "n", v: g.n },
+        { t: "n", v: Math.round(g.ing * 100) / 100, style: 2 },
+      ]);
+    }
+    return { name: nombre, rows: grows, widths: [30, 12, 16], headerRow: 2 };
+  };
 
   return [
+    { name: "Resumen", rows: resumen, widths: [24, 34] },
     {
-      name: "Reporte de ventas",
-      rows: out,
+      name: "Detalle",
+      rows: detalle,
       widths: [12, 28, 20, 30, 22, 14, 16, 18, 14, 12],
-      headerRow: headerIdx,
-      rowHts: hts,
+      headerRow: 2,
+      rowHts: detHts,
     },
+    grupoSheet("POR VENDEDOR", "Por vendedor", "Vendedor", agrupar((r) => r.vendedor || "Vendedor")),
+    grupoSheet(
+      "POR FASE",
+      "Por fase",
+      "Fase",
+      agrupar((r) => r.fase || (r.cortesia ? "Cortesía (sin fase)" : "Sin fase")),
+    ),
   ];
 }
