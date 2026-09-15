@@ -108,6 +108,16 @@ export default function AccessHome() {
           </Pressable>
 
           <Pressable
+            disabled={!selected}
+            onPress={() =>
+              selected &&
+              router.push({ pathname: "/(access)/lista", params: { eventId: selected.id } })
+            }
+            style={({ pressed }) => [s.secondaryButton, { opacity: !selected || pressed ? 0.5 : 1 }]}>
+            <Text style={s.secondaryButtonText}>Lista de puerta</Text>
+          </Pressable>
+
+          <Pressable
             onPress={() => router.push("/(access)/historial")}
             style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
             <Text style={s.secondaryButtonText}>Historial</Text>

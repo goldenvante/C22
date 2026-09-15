@@ -246,3 +246,91 @@ export async function getEntryTicket(entryId: string): Promise<EntryTicketResult
     },
   };
 }
+
+/** Estados que devuelve list_guestlist (enum de BD en texto). */
+const GUEST_ESTADOS: TicketEstado[] = ["ACTIVO", "UTILIZADO", "CANCELADO"];
+
+export type GuestTicket = {
+  ticketId: string;
+  folio: number;
+  comprador: string;
+  fase: string | null;
+  estado: TicketEstado;
+  esCortesia: boolean;
+};
+
+/**
+ * Lista de puerta del evento vía RPC SECURITY DEFINER list_guestlist
+ * (sin SELECT directo sobre tickets y SIN qr_token). Sirve para buscar
+ * por nombre/folio a quien perdió su QR y registrar su entrada manual.
+ */
+export async function listGuestlist(eventId: string): Promise<GuestTicket[]> {
+  if (!eventId) {
+    throw new Error("Elige el evento del control antes de ver la lista.");
+  }
+  const { data, error } = await supabase.rpc("list_guestlist", {
+    p_event_id: eventId,
+  });
+  if (error) {
+    const message = error.message ?? "";
+    if (/network|fetch|failed|could not|timeout/i.test(message)) {
+      throw new Error("Sin conexión. Revisa tu internet e inténtalo de nuevo.");
+    }
+    throw new Error(message || "No se pudo cargar la lista.");
+  }
+  return ((data ?? []) as Record<string, unknown>[]).map((row, i) => {
+    const estado = row.estado as string;
+    if (
+      typeof row.ticket_id !== "string" ||
+      typeof row.folio !== "number" ||
+      typeof row.comprador !== "string" ||
+      !GUEST_ESTADOS.includes(estado as TicketEstado)
+    ) {
+      throw new Error(`Respuesta inesperada del servidor (fila ${i}).`);
+    }
+    return {
+      ticketId: row.ticket_id,
+      folio: row.folio,
+      comprador: row.comprador,
+      fase: typeof row.fase === "string" ? row.fase : null,
+      estado: estado as TicketEstado,
+      esCortesia: row.es_cortesia === true,
+    };
+  });
+}
+
+function parseValidateResult(data: unknown): ValidateResult {
+  const raw = data as { ok?: boolean; code?: string; folio?: number; comprador?: string; ticket_id?: string; fase?: string } | null;
+  if (!raw || !VALID_CODES.includes(raw.code as ValidateCode)) {
+    throw new Error("Respuesta inesperada del servidor.");
+  }
+  return {
+    ok: raw.ok === true,
+    code: raw.code as ValidateCode,
+    folio: typeof raw.folio === "number" ? raw.folio : null,
+    comprador: typeof raw.comprador === "string" ? raw.comprador : null,
+    ticketId: typeof raw.ticket_id === "string" ? raw.ticket_id : null,
+    fase: typeof raw.fase === "string" ? raw.fase : null,
+  };
+}
+
+/**
+ * ticketId + eventId → resultado. Misma máquina de estados y códigos que
+ * validateTicket, pero buscando por id (entrada manual desde la lista de
+ * puerta). La RPC es SECURITY DEFINER y registra la auditoría.
+ */
+export async function validateEntryById(ticketId: string, eventId: string): Promise<ValidateResult> {
+  const id = ticketId.trim();
+  if (!UUID_RE.test(id)) {
+    throw new Error("El boleto seleccionado no es válido.");
+  }
+  if (!eventId) {
+    throw new Error("Elige el evento del control antes de registrar.");
+  }
+  const { data, error } = await supabase.rpc("validate_entry_by_id", {
+    p_ticket_id: id,
+    p_event_id: eventId,
+  });
+  if (error) throw friendlyRpcError(error);
+  return parseValidateResult(data);
+}
