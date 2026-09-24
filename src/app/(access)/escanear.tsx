@@ -9,13 +9,13 @@ import {
 } from "expo-camera";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
 import { getEvent } from "@/features/events/api";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { validateTicket, type ValidateResult } from "@/features/access/api";
 import { ResultCard } from "@/features/access/ResultCard";
 
 export default function EscanearScreen() {
+  const { s, p } = useEventStyles();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const [permission, requestPermission] = useCameraPermissions();
   const [eventName, setEventName] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export default function EscanearScreen() {
   if (!permission) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }
@@ -120,7 +120,7 @@ export default function EscanearScreen() {
               <Text style={[s.meta, { padding: 12, textAlign: "center" }]}>
                 {busy ? "Validando…" : "Apunta al código QR del boleto."}
               </Text>
-              {busy ? <ActivityIndicator color={C22.wine} /> : null}
+              {busy ? <ActivityIndicator color={p.primary} /> : null}
             </View>
           ) : null}
 

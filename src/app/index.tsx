@@ -8,6 +8,7 @@ import {
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 import { useAuth } from "@/auth/AuthProvider";
 import { ThemedText } from "@/components/themed-text";
@@ -86,7 +87,7 @@ export default function LoginScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.form}>
           <ThemedText type="title" style={styles.title}>
-            Comité C22
+            Gestión de eventos
           </ThemedText>
           <ThemedText themeColor="textSecondary" style={styles.subtitle}>
             Inicia sesión con tu usuario
@@ -96,7 +97,7 @@ export default function LoginScreen() {
           <TextInput
             value={usuario}
             onChangeText={setUsuario}
-            placeholder="p. ej. adminc22"
+            placeholder="p. ej. admin.sanjuan"
             placeholderTextColor={theme.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
@@ -150,6 +151,12 @@ export default function LoginScreen() {
           {session && !profile && !requiresPasswordChange ? (
             <Pressable onPress={signOut} style={styles.linkButton}>
               <ThemedText type="link">Usar otra cuenta</ThemedText>
+            </Pressable>
+          ) : null}
+
+          {!session ? (
+            <Pressable onPress={() => router.push("/setup")} style={styles.linkButton}>
+              <ThemedText type="link">¿Nuevo comité? Regístralo aquí</ThemedText>
             </Pressable>
           ) : null}
         </KeyboardAvoidingView>

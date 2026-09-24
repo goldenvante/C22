@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { formatPrecio } from "@/features/events/types";
 import { createSale } from "@/features/sales/api";
 import { SaleForm } from "@/features/sales/SaleForm";
@@ -18,6 +18,7 @@ import {
 } from "@/features/sales/types";
 
 export default function NuevaVentaScreen() {
+  const { s, p } = useEventStyles();
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [created, setCreated] = useState<SaleTicket | null>(null);

@@ -3,13 +3,14 @@ import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BackHeader } from "@/components/back-header";
-import { eventStyles as s } from "@/features/events/eventStyles";
-import { createStaff, ROL_LABEL, type CreateStaffInput } from "@/features/users/api";
+import { useEventStyles } from "@/features/events/eventStyles";
+import { createStaff, profileRolesLabel, type CreateStaffInput, type CreatedStaff } from "@/features/users/api";
 import { UserForm } from "@/features/users/UserForm";
 
-type Created = { usuario: string; rol: CreateStaffInput["rol"] };
+type Created = { usuario: string; roles: CreatedStaff["roles"] };
 
 export default function NewUserScreen() {
+  const { s, p } = useEventStyles();
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [created, setCreated] = useState<Created | null>(null);
@@ -23,7 +24,7 @@ export default function NewUserScreen() {
     try {
       const done = await createStaff(input);
       // La temporal solo existe aquí: se muestra una vez y no se persiste.
-      setCreated({ usuario: done.usuario, rol: done.rol });
+      setCreated({ usuario: done.usuario, roles: done.roles });
       setTempPassword(input.password);
       setCopied(false);
       setCopyHint(false);
@@ -74,7 +75,7 @@ export default function NewUserScreen() {
             <View style={s.card}>
               <Text style={s.sectionTitle}>Usuario creado</Text>
               <Text style={s.body}>
-                {created.usuario} · {ROL_LABEL[created.rol]}
+                {created.usuario} · {profileRolesLabel({ roles: created.roles })}
               </Text>
               <Text style={s.meta}>
                 Esta es la contraseña temporal. Entrégala al usuario: no volverá a mostrarse.

@@ -11,9 +11,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 
 import { useAuth } from "@/auth/AuthProvider";
-import { C22 } from "@/constants/theme";
+import { ThemeSelector } from "@/branding/ThemeSelector";
 import { listEvents } from "@/features/events/api";
-import { estadoBadge, eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import {
   ESTADO_LABEL,
   formatFecha,
@@ -22,6 +22,7 @@ import {
 } from "@/features/events/types";
 
 export default function AdminEvents() {
+  const { s, p, badge } = useEventStyles();
   const { profile, signOut } = useAuth();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +60,7 @@ export default function AdminEvents() {
           <Text style={s.meta}>Hola, {profile?.nombre ?? profile?.usuario}.</Text>
 
           {loading ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : (
             <FlatList
               data={events}
@@ -70,7 +71,7 @@ export default function AdminEvents() {
                 <Text style={s.meta}>{error ?? "Aún no hay eventos. Crea el primero."}</Text>
               }
               renderItem={({ item }) => {
-                const badge = estadoBadge(item.estado);
+                const b = badge(item.estado);
                 return (
                   <Pressable onPress={() => openEvent(item.id)}>
                     <View style={s.card}>
@@ -81,8 +82,8 @@ export default function AdminEvents() {
                       <Text style={s.meta}>
                         {formatFecha(item.fecha)} · {formatHora(item.hora)} · {item.lugar ?? "Lugar por definir"}
                       </Text>
-                      <View style={badge.pill}>
-                        <Text style={badge.text}>{ESTADO_LABEL[item.estado]}</Text>
+                      <View style={b.pill}>
+                        <Text style={b.text}>{ESTADO_LABEL[item.estado]}</Text>
                       </View>
                     </View>
                   </Pressable>
@@ -120,6 +121,14 @@ export default function AdminEvents() {
             style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
             <Text style={s.secondaryButtonText}>Reporte de ventas</Text>
           </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/(admin)/ahorro")}
+            style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+            <Text style={s.secondaryButtonText}>Ahorro</Text>
+          </Pressable>
+
+          <ThemeSelector />
 
           <Pressable onPress={() => signOut()} style={s.linkWrap}>
             <Text style={s.link}>Cerrar sesión</Text>

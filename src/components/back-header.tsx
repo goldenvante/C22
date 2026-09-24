@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 
-import { C22 } from "@/constants/theme";
+import { useEventStyles } from "@/features/events/eventStyles";
 
 type BackFallback =
   | "/(admin)"
@@ -17,6 +17,7 @@ type BackFallback =
  * ocultos). Usa router.back() y, si no hay a dónde volver, el fallback.
  */
 export function BackHeader({ label = "Volver", fallback }: { label?: string; fallback?: BackFallback }) {
+  const { p } = useEventStyles();
   function goBack() {
     if (router.canGoBack()) {
       router.back();
@@ -27,7 +28,7 @@ export function BackHeader({ label = "Volver", fallback }: { label?: string; fal
   return (
     <View style={{ paddingVertical: 4 }}>
       <Pressable onPress={goBack} hitSlop={8}>
-        <Text style={{ fontSize: 15, fontWeight: "700", color: C22.wine }}>
+        <Text style={{ fontSize: 15, fontWeight: "700", color: p.primary }}>
           {"← "}
           {label}
         </Text>

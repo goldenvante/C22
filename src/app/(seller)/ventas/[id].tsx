@@ -4,8 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { formatPrecio } from "@/features/events/types";
 import { getSale } from "@/features/sales/api";
 import {
@@ -17,6 +16,7 @@ import {
 } from "@/features/sales/types";
 
 export default function VentaDetalleScreen() {
+  const { s, p } = useEventStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [sale, setSale] = useState<SaleTicket | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ export default function VentaDetalleScreen() {
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }
@@ -83,7 +83,7 @@ export default function VentaDetalleScreen() {
                 <Text style={s.meta}>Precio pagado: {formatPrecio(sale.precio_pagado)}</Text>
                 <Text style={s.meta}>Método: {METODO_LABEL[sale.metodo_pago]}</Text>
                 {sale.es_cortesia ? (
-                  <Text style={[s.smallBold, { color: C22.wine }]}>CORTESÍA</Text>
+                  <Text style={[s.smallBold, { color: p.primary }]}>CORTESÍA</Text>
                 ) : null}
               </View>
 

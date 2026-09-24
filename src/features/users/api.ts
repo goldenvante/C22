@@ -1,4 +1,4 @@
-import { supabase, type Profile, type ProfileRole } from "@/lib/supabase";
+import { hasRole, supabase, type Profile, type ProfileRole } from "@/lib/supabase";
 
 export type StaffRole = Extract<ProfileRole, "seller" | "access">;
 
@@ -10,15 +10,24 @@ export const ROL_LABEL: Record<ProfileRole, string> = {
   access: "Control de acceso",
 };
 
+/** Etiqueta de los roles de un profile (1-2 roles). */
+export function profileRolesLabel(profile: Pick<Profile, "roles">): string {
+  const parts = (profile.roles ?? []).map((r) => ROL_LABEL[r] ?? r);
+  return parts.length > 0 ? parts.join(" + ") : "Sin rol";
+}
+
+export function isAdmin(profile: Profile | null | undefined): boolean {
+  return hasRole(profile, "admin");
+}
+
 const USUARIO_RE = /^[a-z0-9._-]{3,32}$/;
 
-/** Lista todos los perfiles: activos primero, luego por rol y nombre. */
+/** Lista todos los perfiles del comité: activos primero, luego por nombre. */
 export async function listStaff(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id,usuario,nombre,rol,activo")
+    .select("id,usuario,nombre,roles,activo,committee_id")
     .order("activo", { ascending: false })
-    .order("rol")
     .order("nombre");
   if (error) throw new Error(error.message || "No se pudieron cargar los usuarios.");
   return (data ?? []) as Profile[];
@@ -30,7 +39,7 @@ export async function setActivo(id: string, activo: boolean): Promise<void> {
   if (error) throw new Error(error.message || "No se pudo actualizar el usuario.");
 }
 
-/** Cambia el nombre visible. Nunca toca usuario ni rol. */
+/** Cambia el nombre visible. Nunca toca usuario ni roles. */
 export async function updateNombre(id: string, nombre: string): Promise<void> {
   const name = nombre.trim();
   if (name.length < 1 || name.length > 120) {
@@ -40,17 +49,31 @@ export async function updateNombre(id: string, nombre: string): Promise<void> {
   if (error) throw new Error(error.message || "No se pudo guardar el nombre.");
 }
 
+/**
+ * Cambia los roles de trabajo (1-2: vendedor y/o acceso). Nunca admin por
+ * esta vía; el trigger bloquea escalamientos no autorizados.
+ */
+export async function updateRoles(id: string, roles: StaffRole[]): Promise<void> {
+  const clean = [...new Set(roles)].filter((r): r is StaffRole => r === "seller" || r === "access");
+  if (clean.length < 1 || clean.length > 2) {
+    throw new Error("Elige al menos un rol: Vendedor y/o Control de acceso.");
+  }
+  const { error } = await supabase.from("profiles").update({ roles: clean }).eq("id", id);
+  if (error) throw new Error(error.message || "No se pudieron guardar los roles.");
+}
+
 export type CreateStaffInput = {
   usuario: string;
   nombre: string;
   password: string;
-  rol: StaffRole;
+  /** 1-2 roles: solo vendedor, solo acceso, o ambos. */
+  roles: StaffRole[];
 };
 
 export type CreatedStaff = {
   id: string;
   usuario: string;
-  rol: StaffRole;
+  roles: StaffRole[];
 };
 
 async function mapFunctionError(error: unknown): Promise<Error> {
@@ -79,12 +102,14 @@ async function mapFunctionError(error: unknown): Promise<Error> {
 }
 
 /**
- * Crea vendedor o acceso vía la Edge Function (única vía; sin service_role
- * en el cliente). La Function asigna la temporal y marca el cambio obligatorio.
+ * Crea vendedor, acceso o ambos vía la Edge Function (única vía; sin
+ * service_role en el cliente). La Function asigna la temporal y marca el
+ * cambio obligatorio.
  */
 export async function createStaff(input: CreateStaffInput): Promise<CreatedStaff> {
   const usuario = input.usuario.trim().toLowerCase();
   const nombre = input.nombre.trim();
+  const roles = [...new Set(input.roles)].filter((r): r is StaffRole => r === "seller" || r === "access");
   if (!USUARIO_RE.test(usuario)) {
     throw new Error("Usuario inválido: 3-32 caracteres, letras minúsculas, números, punto, guion o guion bajo.");
   }
@@ -94,14 +119,14 @@ export async function createStaff(input: CreateStaffInput): Promise<CreatedStaff
   if (input.password.length < 8) {
     throw new Error("La contraseña temporal debe tener al menos 8 caracteres.");
   }
-  if (input.rol !== "seller" && input.rol !== "access") {
-    throw new Error("Rol inválido: solo Vendedor o Control de acceso.");
+  if (roles.length < 1 || roles.length > 2) {
+    throw new Error("Elige al menos un rol: Vendedor y/o Control de acceso.");
   }
   const { data, error } = await supabase.functions.invoke("admin-create-user", {
-    body: { mode: "admin", usuario, nombre, password: input.password, rol: input.rol },
+    body: { mode: "admin", usuario, nombre, password: input.password, roles },
   });
   if (error) throw await mapFunctionError(error);
-  const created = data as { ok?: boolean; id?: string; usuario?: string; rol?: StaffRole };
+  const created = data as { ok?: boolean; id?: string; usuario?: string; roles?: StaffRole[] };
   if (!created?.id) throw new Error("Respuesta inesperada del servidor.");
-  return { id: created.id, usuario: created.usuario ?? usuario, rol: created.rol ?? input.rol };
+  return { id: created.id, usuario: created.usuario ?? usuario, roles: created.roles ?? roles };
 }

@@ -4,9 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
 import { changeEventEstado, getEvent } from "@/features/events/api";
-import { estadoBadge, eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { PhaseManager } from "@/features/events/PhaseManager";
 import { exportCierrePdf, exportCierreXlsx, loadEventTickets } from "@/features/reports/xlsx";
 import {
@@ -26,6 +25,7 @@ const ESTADO_ACTION_LABEL: Record<EventEstado, string> = {
 };
 
 export default function EventDetailScreen() {
+  const { s, p, badge } = useEventStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,7 +114,7 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }
@@ -132,8 +132,8 @@ export default function EventDetailScreen() {
               <View style={s.goldRule} />
 
               <View style={s.card}>
-                <View style={estadoBadge(event.estado).pill}>
-                  <Text style={estadoBadge(event.estado).text}>{ESTADO_LABEL[event.estado]}</Text>
+                <View style={badge(event.estado).pill}>
+                  <Text style={badge(event.estado).text}>{ESTADO_LABEL[event.estado]}</Text>
                 </View>
                 <Text style={s.body}>Código: {event.codigo}</Text>
                 <Text style={s.meta}>
@@ -207,7 +207,7 @@ export default function EventDetailScreen() {
                       { opacity: busyCierre || pressed ? 0.7 : 1 },
                     ]}>
                     {busyCierre ? (
-                      <ActivityIndicator color={C22.wine} />
+                      <ActivityIndicator color={p.primary} />
                     ) : (
                       <Text style={s.primaryButtonText}>Generar archivo de cierre</Text>
                     )}
@@ -220,7 +220,7 @@ export default function EventDetailScreen() {
                       { opacity: busyCierre || pressed ? 0.7 : 1 },
                     ]}>
                     {busyCierre ? (
-                      <ActivityIndicator color={C22.wine} />
+                      <ActivityIndicator color={p.primary} />
                     ) : (
                       <Text style={s.secondaryButtonText}>Compartir PDF (solo lectura)</Text>
                     )}

@@ -15,8 +15,7 @@ import DateTimePicker, { type DateTimePickerEvent } from "@react-native-communit
 
 import { BackHeader } from "@/components/back-header";
 import { useAuth } from "@/auth/AuthProvider";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { formatFecha, formatPrecio } from "@/features/events/types";
 import {
   applyFilters,
@@ -59,20 +58,22 @@ function Chip({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { s, p } = useEventStyles();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         s.secondaryButton,
-        selected && { backgroundColor: C22.wine, borderColor: C22.wine },
+        selected && { backgroundColor: p.primary, borderColor: p.primary },
         { opacity: pressed ? 0.7 : 1, paddingHorizontal: 12 },
       ]}>
-      <Text style={[s.secondaryButtonText, selected && { color: C22.cream }]}>{label}</Text>
+      <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>{label}</Text>
     </Pressable>
   );
 }
 
 function Kpi({ value, label }: { value: string; label: string }) {
+  const { s, p } = useEventStyles();
   return (
     <View style={[s.card, { flex: 1, minWidth: 100, alignItems: "center" }]}>
       <Text style={[s.screenTitle, { fontSize: 22 }]}>{value}</Text>
@@ -82,6 +83,7 @@ function Kpi({ value, label }: { value: string; label: string }) {
 }
 
 function GroupSection({ title, rows }: { title: string; rows: GroupRow[] }) {
+  const { s, p } = useEventStyles();
   if (rows.length === 0) return null;
   return (
     <View style={{ gap: 8 }}>
@@ -101,6 +103,7 @@ function GroupSection({ title, rows }: { title: string; rows: GroupRow[] }) {
 type DateField = "desde" | "hasta" | null;
 
 export default function ReporteScreen() {
+  const { s, p } = useEventStyles();
   const { profile } = useAuth();
   const [tickets, setTickets] = useState<SaleTicket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -246,7 +249,7 @@ export default function ReporteScreen() {
           <BackHeader fallback="/(admin)" />
 
           {loading ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : error ? (
             <View style={{ gap: 8 }}>
               <Text style={s.error}>{error}</Text>

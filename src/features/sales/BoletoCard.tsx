@@ -74,8 +74,8 @@ function Corner({ style }: { style: object }) {
  * superficie clara, folio, comprador, divisor e info inferior.
  * Sin fase, precio, método ni datos técnicos. Con ref para captura.
  */
-export const BoletoCard = forwardRef<View, { sale: BoletoData }>(function BoletoCard(
-  { sale },
+export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: string | null }>(function BoletoCard(
+  { sale, committeeName },
   ref,
 ) {
   const { width } = useWindowDimensions();
@@ -84,6 +84,10 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData }>(function Boleto
   const fecha = fechaCorta(sale.evento?.fecha ?? null);
   const fechaLong = fechaLarga(sale.evento?.fecha ?? null);
   const hora = horaCorta(sale.evento?.hora ?? null);
+  // Solo texto: el diseño de la tarjeta no cambia. Si no hay comité, genérico.
+  const committee = (committeeName ?? "").trim().toUpperCase();
+  const header = committee ? `${committee} · ACCESO DIGITAL` : "ACCESO DIGITAL";
+  const footer = committee || "ACCESO DIGITAL";
 
   return (
     <View
@@ -103,7 +107,7 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData }>(function Boleto
         <View style={{ flex: 1, backgroundColor: "rgba(14, 6, 9, 0.60)" }}>
           <View style={{ alignItems: "center", paddingTop: 26, paddingHorizontal: 24, gap: 6 }}>
             <Text style={{ fontSize: 10, letterSpacing: 4, color: C22.gold, fontWeight: "700" }}>
-              COMITÉ C22 · ACCESO DIGITAL
+              {header}
             </Text>
             <Text
               numberOfLines={3}
@@ -247,7 +251,7 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData }>(function Boleto
               color: "rgba(247, 239, 227, 0.6)",
               paddingBottom: 18,
             }}>
-            COMITÉ C22
+            {footer}
           </Text>
         </View>
       </ImageBackground>

@@ -12,8 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { listEvents } from "@/features/events/api";
 import type { EventItem } from "@/features/events/types";
 import {
@@ -25,6 +24,7 @@ import { listStaff } from "@/features/users/api";
 import type { Profile } from "@/lib/supabase";
 
 export default function CortesiasScreen() {
+  const { s, p } = useEventStyles();
   const [sellers, setSellers] = useState<Profile[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [quotas, setQuotas] = useState<CourtesyQuota[]>([]);
@@ -42,7 +42,7 @@ export default function CortesiasScreen() {
     // 08 aún no aplicada), los selectores de vendedor/evento siguen activos.
     try {
       const st = await listStaff();
-      setSellers(st.filter((p) => p.rol === "seller"));
+      setSellers(st.filter((p) => (p.roles ?? []).includes("seller")));
     } catch (e) {
       setError(`Vendedores: ${(e as Error).message}`);
     }
@@ -108,7 +108,7 @@ export default function CortesiasScreen() {
           </Text>
 
           {loading ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : (
             <FlatList
               data={quotas}
@@ -132,10 +132,10 @@ export default function CortesiasScreen() {
                           onPress={() => setSellerId(p.id)}
                           style={({ pressed }) => [
                             s.secondaryButton,
-                            selected && { backgroundColor: C22.wine, borderColor: C22.wine },
+                            selected && { backgroundColor: p.primary, borderColor: p.primary },
                             { opacity: pressed || busy ? 0.7 : 1 },
                           ]}>
-                          <Text style={[s.secondaryButtonText, selected && { color: C22.cream }]}>
+                          <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
                             {p.nombre} · @{p.usuario}
                           </Text>
                         </Pressable>
@@ -156,10 +156,10 @@ export default function CortesiasScreen() {
                           onPress={() => setEventId(ev.id)}
                           style={({ pressed }) => [
                             s.secondaryButton,
-                            selected && { backgroundColor: C22.wine, borderColor: C22.wine },
+                            selected && { backgroundColor: p.primary, borderColor: p.primary },
                             { opacity: pressed || busy ? 0.7 : 1 },
                           ]}>
-                          <Text style={[s.secondaryButtonText, selected && { color: C22.cream }]}>
+                          <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
                             {ev.nombre} · {ev.codigo}
                           </Text>
                         </Pressable>
@@ -171,7 +171,7 @@ export default function CortesiasScreen() {
                     value={cantidad}
                     onChangeText={setCantidad}
                     placeholder="5"
-                    placeholderTextColor={C22.inkSoft}
+                    placeholderTextColor={p.textSoft}
                     keyboardType="number-pad"
                     editable={!busy}
                     style={s.input}
@@ -182,7 +182,7 @@ export default function CortesiasScreen() {
                     disabled={busy}
                     style={({ pressed }) => [s.primaryButton, { opacity: busy || pressed ? 0.7 : 1 }]}>
                     {busy ? (
-                      <ActivityIndicator color={C22.cream} />
+                      <ActivityIndicator color={p.onPrimary} />
                     ) : (
                       <Text style={s.primaryButtonText}>Guardar asignación</Text>
                     )}

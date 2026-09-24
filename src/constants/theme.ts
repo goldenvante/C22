@@ -65,9 +65,9 @@ export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
 
 /**
- * Paleta Comité C22: wine/borgoña sobre cream, estética editorial cálida.
- * El módulo de Eventos usa estos colores de forma explícita (fijos, sin
- * depender del modo claro/oscuro del sistema) para garantizar contraste.
+ * Paleta por defecto: wine/borgoña sobre cream, estética editorial cálida.
+ * Se usa como base antes del registro del comité; tras el registro cada
+ * comité aplica sus propios colores (ver useBrandColors / committees).
  */
 export const C22 = {
   wine: "#8B263D",

@@ -12,10 +12,8 @@ import DateTimePicker, { type DateTimePickerEvent } from "@react-native-communit
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 
-import { C22 } from "@/constants/theme";
-
 import { suggestCode } from "./codigo";
-import { eventStyles as s } from "./eventStyles";
+import { useEventStyles } from "./eventStyles";
 import { formatFecha, parseFechaLocal, toFechaKey } from "./types";
 
 export type EventFormValues = {
@@ -59,6 +57,7 @@ function parseHoraLocal(hora: string): Date | null {
 }
 
 export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }: Props) {
+  const { s, p } = useEventStyles();
   const [nombre, setNombre] = useState(initial?.nombre ?? "");
   const [codigo, setCodigo] = useState(initial?.codigo ?? "");
   const [codigoTouched, setCodigoTouched] = useState(Boolean(initial?.codigo));
@@ -185,8 +184,8 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
       <TextInput
         value={nombre}
         onChangeText={handleNombreChange}
-        placeholder="Gran Baile C22"
-        placeholderTextColor={C22.inkSoft}
+        placeholder="Gran Baile Anual"
+        placeholderTextColor={p.textSoft}
         editable={!busy}
         style={s.input}
       />
@@ -199,8 +198,8 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
             setCodigo(v.toUpperCase());
             setCodigoTouched(true);
           }}
-          placeholder="GBC22"
-          placeholderTextColor={C22.inkSoft}
+          placeholder="GBA-2026"
+          placeholderTextColor={p.textSoft}
           autoCapitalize="characters"
           autoCorrect={false}
           editable={!busy}
@@ -248,7 +247,7 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
         value={lugar}
         onChangeText={setLugar}
         placeholder="Patio central"
-        placeholderTextColor={C22.inkSoft}
+        placeholderTextColor={p.textSoft}
         editable={!busy}
         style={s.input}
       />
@@ -258,7 +257,7 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
         value={mapasUrl}
         onChangeText={setMapasUrl}
         placeholder="https://maps.google.com/… o https://maps.apple.com/…"
-        placeholderTextColor={C22.inkSoft}
+        placeholderTextColor={p.textSoft}
         autoCapitalize="none"
         autoCorrect={false}
         editable={!busy}
@@ -271,7 +270,7 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
           <Image
             source={{ uri: displayUri }}
             contentFit="cover"
-            style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 8, borderWidth: 1, borderColor: C22.wine }}
+            style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 8, borderWidth: 1, borderColor: p.primary }}
           />
           <View style={s.row}>
             <Pressable
@@ -305,7 +304,7 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
         disabled={busy}
         style={({ pressed }) => [s.primaryButton, { opacity: busy || pressed ? 0.7 : 1 }]}>
         {busy ? (
-          <ActivityIndicator color={C22.cream} />
+          <ActivityIndicator color={p.onPrimary} />
         ) : (
           <Text style={s.primaryButtonText}>{submitLabel}</Text>
         )}

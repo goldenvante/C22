@@ -33,6 +33,15 @@ const MIN_PASSWORD_LEN = 8;
 
 type StaffRol = "seller" | "access";
 
+const STAFF_ROLES: StaffRol[] = ["seller", "access"];
+
+function parseRoles(raw: unknown, fallbackSingle: unknown): StaffRol[] | null {
+  const list = Array.isArray(raw) ? raw : [fallbackSingle];
+  const clean = [...new Set(list.filter((r): r is StaffRol => r === "seller" || r === "access") as StaffRol[])];
+  if (clean.length < 1 || clean.length > 2) return null;
+  return clean;
+}
+
 function json(status: number, data: unknown): Response {
   return Response.json(data, { status });
 }
@@ -67,11 +76,13 @@ function validatePassword(raw: unknown): boolean {
   return typeof raw === "string" && raw.length >= MIN_PASSWORD_LEN;
 }
 
-async function adminExists(db: AdminDb): Promise<boolean> {
-  const { count, error } = await db
+async function adminExists(db: AdminDb, committeeId?: string): Promise<boolean> {
+  let q = db
     .from("profiles")
     .select("id", { count: "exact", head: true })
-    .eq("rol", "admin");
+    .filter("roles", "cs", "{admin}");
+  if (committeeId) q = q.eq("committee_id", committeeId);
+  const { count, error } = await q;
   if (error) throw new Error(`PROFILE_CHECK_FAILED: ${error.message}`);
   return (count ?? 0) > 0;
 }
@@ -91,7 +102,8 @@ async function createAuthUserWithProfile(args: {
   usuario: string;
   nombre: string;
   password: string;
-  rol: "admin" | StaffRol;
+  roles: ("admin" | StaffRol)[];
+  committeeId?: string | null;
   // Respuesta 409 cuando el INSERT de profiles viola unicidad (23505):
   // en bootstrap significa que otro bootstrap ganó la carrera (ADMIN_EXISTS),
   // en modo admin significa usuario duplicado (USUARIO_TAKEN).
@@ -119,8 +131,9 @@ async function createAuthUserWithProfile(args: {
     id: authId,
     nombre: args.nombre,
     usuario: args.usuario,
-    rol: args.rol,
+    roles: args.roles,
     activo: true,
+    committee_id: args.committeeId ?? null,
   });
   if (profileError) {
     // Rollback: no dejar un Auth user huérfano sin profile.
@@ -132,7 +145,7 @@ async function createAuthUserWithProfile(args: {
   }
 
   // Respuesta sin datos sensibles: nunca password ni secretos.
-  return json(201, { ok: true, id: authId, usuario: args.usuario, rol: args.rol });
+  return json(201, { ok: true, id: authId, usuario: args.usuario, roles: args.roles });
 }
 
 async function handleBootstrap(db: AdminDb, body: Record<string, unknown>): Promise<Response> {
@@ -172,7 +185,7 @@ async function handleBootstrap(db: AdminDb, body: Record<string, unknown>): Prom
     return fail(500, "PROFILE_CHECK_FAILED", (e as Error).message);
   }
 
-  return await createAuthUserWithProfile({ db, usuario, nombre, password: body.password as string, rol: "admin", profileConflict: { code: "ADMIN_EXISTS", message: "Ya existe un Admin Principal." } });
+  return await createAuthUserWithProfile({ db, usuario, nombre, password: body.password as string, roles: ["admin"], committeeId: null, profileConflict: { code: "ADMIN_EXISTS", message: "Ya existe un Admin Principal." } });
 }
 
 async function handleAdmin(req: Request, db: AdminDb, body: Record<string, unknown>): Promise<Response> {
@@ -189,20 +202,24 @@ async function handleAdmin(req: Request, db: AdminDb, body: Record<string, unkno
 
   const { data: profile, error: profileError } = await db
     .from("profiles")
-    .select("rol, activo")
+    .select("roles, activo, committee_id")
     .eq("id", caller.user.id)
     .maybeSingle();
   if (profileError) {
     return fail(500, "PROFILE_CHECK_FAILED", profileError.message);
   }
-  if (!profile || profile.rol !== "admin" || profile.activo !== true) {
+  const callerRoles = (profile as { roles?: unknown } | null)?.roles;
+  const isCallerAdmin = Array.isArray(callerRoles) && callerRoles.includes("admin");
+  if (!profile || !isCallerAdmin || (profile as { activo?: boolean }).activo !== true) {
     return fail(403, "FORBIDDEN", "Solo un Admin Principal activo puede crear usuarios.");
   }
+  const callerCommittee = (profile as { committee_id?: string | null }).committee_id ?? null;
 
-  // Allowlist estricta: nunca 'admin' por este modo.
-  const rol = body.rol;
-  if (rol !== "seller" && rol !== "access") {
-    return fail(400, "INVALID_ROL", "Rol inválido: solo 'seller' o 'access'.");
+  // Allowlist estricta: 1-2 roles de trabajo (nunca 'admin' por este modo).
+  // Acepta `roles: ["seller","access"]` o el singular legacy `rol`.
+  const roles = parseRoles(body.roles, body.rol);
+  if (!roles) {
+    return fail(400, "INVALID_ROL", "Rol inválido: elige Vendedor y/o Control de acceso (1-2 roles).");
   }
 
   const usuario = normalizeUsuario(body.usuario);
@@ -225,7 +242,7 @@ async function handleAdmin(req: Request, db: AdminDb, body: Record<string, unkno
     return fail(500, "PROFILE_CHECK_FAILED", (e as Error).message);
   }
 
-  return await createAuthUserWithProfile({ db, usuario, nombre, password: body.password as string, rol, profileConflict: { code: "USUARIO_TAKEN", message: "El usuario ya existe." } });
+  return await createAuthUserWithProfile({ db, usuario, nombre, password: body.password as string, roles, committeeId: callerCommittee, profileConflict: { code: "USUARIO_TAKEN", message: "El usuario ya existe." } });
 }
 
 export default {

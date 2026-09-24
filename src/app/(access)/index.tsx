@@ -11,13 +11,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 
 import { useAuth } from "@/auth/AuthProvider";
-import { C22 } from "@/constants/theme";
+import { ThemeSelector } from "@/branding/ThemeSelector";
 import { listEvents } from "@/features/events/api";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { formatFecha, formatHora, type EventItem } from "@/features/events/types";
+import { hasRole } from "@/lib/supabase";
 
 export default function AccessHome() {
+  const { s, p } = useEventStyles();
   const { profile, loading: authLoading, signOut } = useAuth();
+  const isSeller = hasRole(profile, "seller");
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,7 +51,7 @@ export default function AccessHome() {
   if (authLoading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }
@@ -64,7 +67,7 @@ export default function AccessHome() {
           <Text style={s.sectionTitle}>Selecciona el evento</Text>
 
           {loading ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : (
             <FlatList
               data={events}
@@ -81,10 +84,10 @@ export default function AccessHome() {
                     onPress={() => setEventId(item.id)}
                     style={({ pressed }) => [
                       s.secondaryButton,
-                      isSelected && { backgroundColor: C22.wine, borderColor: C22.wine },
+                      isSelected && { backgroundColor: p.primary, borderColor: p.primary },
                       { opacity: pressed ? 0.7 : 1 },
                     ]}>
-                    <Text style={[s.secondaryButtonText, isSelected && { color: C22.cream }]}>
+                    <Text style={[s.secondaryButtonText, isSelected && { color: p.onPrimary }]}>
                       {item.nombre} · {formatFecha(item.fecha)} {formatHora(item.hora)}
                     </Text>
                   </Pressable>
@@ -122,6 +125,22 @@ export default function AccessHome() {
             style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
             <Text style={s.secondaryButtonText}>Historial</Text>
           </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/(access)/ahorro")}
+            style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+            <Text style={s.secondaryButtonText}>Ahorro</Text>
+          </Pressable>
+
+          {isSeller ? (
+            <Pressable
+              onPress={() => router.push("/(seller)")}
+              style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+              <Text style={s.secondaryButtonText}>Ventas</Text>
+            </Pressable>
+          ) : null}
+
+          <ThemeSelector />
 
           <Pressable onPress={() => signOut()} style={s.linkWrap}>
             <Text style={s.link}>Cerrar sesión</Text>

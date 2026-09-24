@@ -24,7 +24,7 @@ import {
  * Excel al abrir). Disuasoria: vive en el código del cliente. No simular
  * más protección de la que esto da.
  */
-const CIERRE_PASSWORD = "C22cierre2026";
+const CIERRE_PASSWORD = "ComiteCierre2026";
 
 function stamp(): string {
   const d = new Date();
@@ -192,7 +192,7 @@ export async function exportReportPdf(
     });
   const pdf = buildLockedPdf(
     {
-      title: "Reporte de ventas — Comité C22",
+      title: "Reporte de ventas",
       meta: [
         `Generado: ${meta.generado} · Por: ${meta.generadoPor}`,
         `Evento: ${meta.evento || "Todos"} · Periodo: ${meta.periodo || "Todo"}`,
@@ -245,7 +245,7 @@ export async function exportReportPdf(
 }
 
 /** Password de propietario del PDF (abre sin contraseña; protege edición). */
-const PDF_OWNER_PASSWORD = "C22cierre2026";
+const PDF_OWNER_PASSWORD = "ComiteCierre2026";
 
 function fechaHoraActual(): string {
   const d = new Date();
@@ -305,7 +305,7 @@ export async function exportCierrePdf(event: EventItem, tickets: SaleTicket[]): 
   const pdf = buildLockedPdf(
     {
       title: `Cierre — ${event.nombre} (${event.codigo})`,
-      meta: [`Generado: ${fechaHoraActual()} · Comité C22`],
+      meta: [`Generado: ${fechaHoraActual()}`],
       tables: [
         {
           title: "Resumen",

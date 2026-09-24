@@ -10,10 +10,8 @@ import {
 } from "react-native";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
-import { C22 } from "@/constants/theme";
-
 import { createPhase, listPhases } from "./api";
-import { eventStyles as s } from "./eventStyles";
+import { useEventStyles } from "./eventStyles";
 import {
   formatFecha,
   formatPrecio,
@@ -34,6 +32,7 @@ function FechaButton({
   onPress: () => void;
   disabled: boolean;
 }) {
+  const { s, p } = useEventStyles();
   return (
     <View style={{ gap: 2 }}>
       <Text style={s.label}>{label}</Text>
@@ -52,6 +51,7 @@ function FechaButton({
 }
 
 export function PhaseManager({ eventId }: { eventId: string }) {
+  const { s, p } = useEventStyles();
   const [phases, setPhases] = useState<EventPhase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +185,7 @@ export function PhaseManager({ eventId }: { eventId: string }) {
     return "Sin vigencia definida";
   }
 
-  if (loading) return <ActivityIndicator color={C22.wine} />;
+  if (loading) return <ActivityIndicator color={p.primary} />;
 
   return (
     <View style={{ gap: 8 }}>
@@ -218,7 +218,7 @@ export function PhaseManager({ eventId }: { eventId: string }) {
           value={nombre}
           onChangeText={setNombre}
           placeholder="Preventa"
-          placeholderTextColor={C22.inkSoft}
+          placeholderTextColor={p.textSoft}
           editable={!busy}
           style={s.input}
         />
@@ -226,7 +226,7 @@ export function PhaseManager({ eventId }: { eventId: string }) {
           value={precio}
           onChangeText={setPrecio}
           placeholder="150.00"
-          placeholderTextColor={C22.inkSoft}
+          placeholderTextColor={p.textSoft}
           keyboardType="decimal-pad"
           editable={!busy}
           style={s.input}
@@ -248,7 +248,7 @@ export function PhaseManager({ eventId }: { eventId: string }) {
           disabled={busy}
           style={({ pressed }) => [s.primaryButton, { opacity: busy || pressed ? 0.7 : 1 }]}>
           {busy ? (
-            <ActivityIndicator color={C22.cream} />
+            <ActivityIndicator color={p.onPrimary} />
           ) : (
             <Text style={s.primaryButtonText}>Agregar fase</Text>
           )}

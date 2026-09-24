@@ -6,9 +6,10 @@ import { router } from "expo-router";
 import { BackHeader } from "@/components/back-header";
 import { createEvent, updateEvent, uploadEventImage } from "@/features/events/api";
 import { EventForm, type EventFormValues, type PendingEventImage } from "@/features/events/EventForm";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 
 export default function NewEventScreen() {
+  const { s, p } = useEventStyles();
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 

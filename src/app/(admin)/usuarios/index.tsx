@@ -14,12 +14,21 @@ import { router, useFocusEffect } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
 import { useAuth } from "@/auth/AuthProvider";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
-import { listStaff, ROL_LABEL, setActivo, updateNombre } from "@/features/users/api";
-import type { Profile } from "@/lib/supabase";
+import { useEventStyles } from "@/features/events/eventStyles";
+import {
+  listStaff,
+  profileRolesLabel,
+  setActivo,
+  updateNombre,
+  updateRoles,
+  STAFF_ROLES,
+  ROL_LABEL,
+  type StaffRole,
+} from "@/features/users/api";
+import { hasRole, type Profile } from "@/lib/supabase";
 
 export default function UsersScreen() {
+  const { s, p } = useEventStyles();
   const { profile: self } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +98,27 @@ export default function UsersScreen() {
     }
   }
 
+  async function handleToggleRole(user: Profile, role: StaffRole) {
+    const current = (user.roles ?? []).filter((r): r is StaffRole => r === "seller" || r === "access");
+    const next = current.includes(role)
+      ? current.filter((r) => r !== role)
+      : [...current, role];
+    if (next.length < 1) {
+      setError("El usuario debe tener al menos un rol.");
+      return;
+    }
+    setBusyId(user.id);
+    setError(null);
+    try {
+      await updateRoles(user.id, next);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <View style={s.screen}>
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
@@ -98,7 +128,7 @@ export default function UsersScreen() {
           <BackHeader fallback="/(admin)" />
 
           {loading ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : (
             <FlatList
               data={users}
@@ -112,6 +142,10 @@ export default function UsersScreen() {
               renderItem={({ item }) => {
                 const isSelf = item.id === self?.id;
                 const busy = busyId === item.id;
+                const itemIsAdmin = hasRole(item, "admin");
+                const itemRoles = (item.roles ?? []).filter(
+                  (r): r is StaffRole => r === "seller" || r === "access",
+                );
                 return (
                   <View style={s.card}>
                     {editingId === item.id ? (
@@ -119,7 +153,7 @@ export default function UsersScreen() {
                         <TextInput
                           value={editNombre}
                           onChangeText={setEditNombre}
-                          placeholderTextColor={C22.inkSoft}
+                          placeholderTextColor={p.textSoft}
                           editable={!busy}
                           style={s.input}
                         />
@@ -144,7 +178,29 @@ export default function UsersScreen() {
                           </Text>
                         </View>
                         <Text style={s.meta}>@{item.usuario}</Text>
-                        <Text style={s.meta}>{ROL_LABEL[item.rol]}</Text>
+                        <Text style={s.meta}>{profileRolesLabel(item)}</Text>
+                        {!itemIsAdmin ? (
+                          <View style={[s.row, { marginTop: 6 }]}>
+                            {STAFF_ROLES.map((r) => {
+                              const selected = itemRoles.includes(r);
+                              return (
+                                <Pressable
+                                  key={r}
+                                  disabled={busy}
+                                  onPress={() => handleToggleRole(item, r)}
+                                  style={({ pressed }) => [
+                                    s.secondaryButton,
+                                    selected && { backgroundColor: p.primary, borderColor: p.primary },
+                                    { opacity: pressed || busy ? 0.7 : 1 },
+                                  ]}>
+                                  <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
+                                    {selected ? "✓ " : ""}{ROL_LABEL[r]}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+                        ) : null}
                         <View style={[s.row, { marginTop: 6 }]}>
                           <Pressable
                             disabled={busy}

@@ -11,12 +11,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
 import { myScans, type ScanRecord } from "@/features/access/api";
 import { formatFechaHora, RESULTADO_LABEL } from "@/features/access/display";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 
 export default function HistorialScreen() {
+  const { s, p } = useEventStyles();
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,7 +49,7 @@ export default function HistorialScreen() {
           <BackHeader fallback="/(access)" />
 
           {loading ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : error ? (
             <View style={{ gap: 8 }}>
               <Text style={s.error}>{error}</Text>

@@ -14,14 +14,16 @@ import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useCommittee } from "@/branding/useCommittee";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { getSale } from "@/features/sales/api";
 import { BoletoCard } from "@/features/sales/BoletoCard";
 import type { SaleTicket } from "@/features/sales/types";
 
 export default function BoletoScreen() {
+  const { s, p } = useEventStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { committee } = useCommittee();
   const [sale, setSale] = useState<SaleTicket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +98,7 @@ export default function BoletoScreen() {
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }
@@ -110,7 +112,7 @@ export default function BoletoScreen() {
             <Text style={s.error}>{error}</Text>
           ) : sale ? (
             <>
-              <BoletoCard sale={sale} ref={cardRef} />
+              <BoletoCard sale={sale} committeeName={committee?.nombre} ref={cardRef} />
 
               {sale.estado === "CANCELADO" ? (
                 <Text style={s.error}>
@@ -132,7 +134,7 @@ export default function BoletoScreen() {
                   { opacity: working !== null || pressed ? 0.7 : 1 },
                 ]}>
                 {working === "save" ? (
-                  <ActivityIndicator color={C22.cream} />
+                  <ActivityIndicator color={p.onPrimary} />
                 ) : (
                   <Text style={s.primaryButtonText}>↓ Guardar imagen</Text>
                 )}
@@ -146,7 +148,7 @@ export default function BoletoScreen() {
                   { opacity: working !== null || pressed ? 0.7 : 1 },
                 ]}>
                 {working === "share" ? (
-                  <ActivityIndicator color={C22.wine} />
+                  <ActivityIndicator color={p.primary} />
                 ) : (
                   <Text style={s.secondaryButtonText}>Compartir</Text>
                 )}

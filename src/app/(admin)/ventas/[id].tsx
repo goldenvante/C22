@@ -4,8 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { formatPrecio } from "@/features/events/types";
 import { cancelSale, getSale } from "@/features/sales/api";
 import {
@@ -17,6 +16,7 @@ import {
 } from "@/features/sales/types";
 
 export default function AdminVentaDetalleScreen() {
+  const { s, p } = useEventStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [sale, setSale] = useState<SaleTicket | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,7 +77,7 @@ export default function AdminVentaDetalleScreen() {
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }
@@ -111,7 +111,7 @@ export default function AdminVentaDetalleScreen() {
                 <Text style={s.meta}>Precio pagado: {formatPrecio(sale.precio_pagado)}</Text>
                 <Text style={s.meta}>Método: {METODO_LABEL[sale.metodo_pago]}</Text>
                 {sale.es_cortesia ? (
-                  <Text style={[s.smallBold, { color: C22.wine }]}>CORTESÍA</Text>
+                  <Text style={[s.smallBold, { color: p.primary }]}>CORTESÍA</Text>
                 ) : null}
                 <Text style={s.meta}>
                   Vendedor: {sale.vendedor?.nombre ?? "—"}
@@ -125,7 +125,7 @@ export default function AdminVentaDetalleScreen() {
                   onPress={confirmCancel}
                   style={({ pressed }) => [s.dangerButton, { opacity: busy || pressed ? 0.7 : 1 }]}>
                   {busy ? (
-                    <ActivityIndicator color={C22.cream} />
+                    <ActivityIndicator color={p.onPrimary} />
                   ) : (
                     <Text style={s.dangerButtonText}>Cancelar venta</Text>
                   )}

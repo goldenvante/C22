@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ComiteC22",
+    "name": "Gestor de Comités",
     "slug": "ComiteC22",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -38,14 +38,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Permitir que Comité C22 use la cámara para escanear los códigos QR de los boletos."
+          "cameraPermission": "Permitir que la app use la cámara para escanear los códigos QR de los boletos."
         }
       ],
       "expo-sharing",
       [
         "expo-media-library",
         {
-          "photosPermission": "Permitir que Comité C22 guarde tu boleto digital en Fotos."
+          "photosPermission": "Permitir que la app guarde tu boleto digital en Fotos."
         }
       ]
     ],

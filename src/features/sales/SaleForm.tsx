@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { formatPrecio, type EventItem, type EventPhase } from "@/features/events/types";
 
 import { listSellableEvents, listSellablePhases } from "./api";
@@ -15,6 +14,7 @@ type Props = {
 };
 
 export function SaleForm({ busy, serverError, onSubmit }: Props) {
+  const { s, p } = useEventStyles();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [phases, setPhases] = useState<EventPhase[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -85,7 +85,7 @@ export function SaleForm({ busy, serverError, onSubmit }: Props) {
     <View style={{ gap: 4 }}>
       <Text style={s.label}>Evento</Text>
       {loadingEvents ? (
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       ) : events.length === 0 ? (
         <Text style={s.meta}>No hay eventos publicados por ahora.</Text>
       ) : (
@@ -99,10 +99,10 @@ export function SaleForm({ busy, serverError, onSubmit }: Props) {
                 onPress={() => handleEventChange(ev.id)}
                 style={({ pressed }) => [
                   s.secondaryButton,
-                  selected && { backgroundColor: C22.wine, borderColor: C22.wine },
+                  selected && { backgroundColor: p.primary, borderColor: p.primary },
                   { opacity: pressed || busy ? 0.7 : 1 },
                 ]}>
-                <Text style={[s.secondaryButtonText, selected && { color: C22.cream }]}>
+                <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
                   {ev.nombre} · {ev.codigo}
                 </Text>
               </Pressable>
@@ -115,7 +115,7 @@ export function SaleForm({ busy, serverError, onSubmit }: Props) {
         <>
           <Text style={s.label}>Fase</Text>
           {loadingPhases ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : phases.length === 0 ? (
             <Text style={s.meta}>Este evento no tiene fases disponibles.</Text>
           ) : (
@@ -129,10 +129,10 @@ export function SaleForm({ busy, serverError, onSubmit }: Props) {
                     onPress={() => setPhaseId(ph.id)}
                     style={({ pressed }) => [
                       s.secondaryButton,
-                      selected && { backgroundColor: C22.wine, borderColor: C22.wine },
+                      selected && { backgroundColor: p.primary, borderColor: p.primary },
                       { opacity: pressed || busy ? 0.7 : 1 },
                     ]}>
-                    <Text style={[s.secondaryButtonText, selected && { color: C22.cream }]}>
+                    <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
                       {ph.nombre} — {formatPrecio(ph.precio)}
                     </Text>
                   </Pressable>
@@ -152,7 +152,7 @@ export function SaleForm({ busy, serverError, onSubmit }: Props) {
         value={nombre}
         onChangeText={setNombre}
         placeholder="Nombre completo"
-        placeholderTextColor={C22.inkSoft}
+        placeholderTextColor={p.textSoft}
         editable={!busy}
         style={s.input}
       />
@@ -162,7 +162,7 @@ export function SaleForm({ busy, serverError, onSubmit }: Props) {
         value={telefono}
         onChangeText={setTelefono}
         placeholder="55 1234 5678"
-        placeholderTextColor={C22.inkSoft}
+        placeholderTextColor={p.textSoft}
         keyboardType="phone-pad"
         editable={!busy}
         style={s.input}
@@ -179,10 +179,10 @@ export function SaleForm({ busy, serverError, onSubmit }: Props) {
               onPress={() => setMetodo(m)}
               style={({ pressed }) => [
                 s.secondaryButton,
-                selected && { backgroundColor: C22.wine, borderColor: C22.wine },
+                selected && { backgroundColor: p.primary, borderColor: p.primary },
                 { opacity: pressed || busy ? 0.7 : 1 },
               ]}>
-              <Text style={[s.secondaryButtonText, selected && { color: C22.cream }]}>
+              <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
                 {METODO_LABEL[m]}
               </Text>
             </Pressable>
@@ -197,7 +197,7 @@ export function SaleForm({ busy, serverError, onSubmit }: Props) {
         disabled={busy}
         style={({ pressed }) => [s.primaryButton, { opacity: busy || pressed ? 0.7 : 1 }]}>
         {busy ? (
-          <ActivityIndicator color={C22.cream} />
+          <ActivityIndicator color={p.onPrimary} />
         ) : (
           <Text style={s.primaryButtonText}>Registrar venta</Text>
         )}

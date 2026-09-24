@@ -12,9 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
 import { getEvent } from "@/features/events/api";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import {
   listGuestlist,
   validateEntryById,
@@ -25,6 +24,7 @@ import { ResultCard } from "@/features/access/ResultCard";
 import { formatFolio, ticketBadge, TICKET_ESTADO_LABEL } from "@/features/sales/types";
 
 export default function ListaPuertaScreen() {
+  const { s, p } = useEventStyles();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const [eventName, setEventName] = useState<string | null>(null);
   const [tickets, setTickets] = useState<GuestTicket[]>([]);
@@ -175,7 +175,7 @@ export default function ListaPuertaScreen() {
           ) : null}
 
           {loading ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : error && tickets.length === 0 ? (
             <View style={{ gap: 8 }}>
               <Text style={s.error}>{error}</Text>
@@ -215,7 +215,7 @@ export default function ListaPuertaScreen() {
                     onPress={() => pick(item)}
                     style={({ pressed }) => [
                       s.card,
-                      isSelected && { borderColor: C22.wine, borderWidth: 2 },
+                      isSelected && { borderColor: p.primary, borderWidth: 2 },
                       { opacity: pressed ? 0.7 : 1 },
                     ]}>
                     <View style={s.row}>

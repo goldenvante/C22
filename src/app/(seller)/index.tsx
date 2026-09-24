@@ -3,16 +3,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 import { useAuth } from "@/auth/AuthProvider";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { ThemeSelector } from "@/branding/ThemeSelector";
+import { useEventStyles } from "@/features/events/eventStyles";
+import { hasRole } from "@/lib/supabase";
 
 export default function SellerHome() {
+  const { s, p } = useEventStyles();
   const { profile, loading, signOut } = useAuth();
+  const isAccess = hasRole(profile, "access");
 
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }
@@ -42,6 +45,22 @@ export default function SellerHome() {
             style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
             <Text style={s.secondaryButtonText}>Boletos de cortesía</Text>
           </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/(seller)/ahorro")}
+            style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+            <Text style={s.secondaryButtonText}>Ahorro</Text>
+          </Pressable>
+
+          {isAccess ? (
+            <Pressable
+              onPress={() => router.push("/(access)")}
+              style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+              <Text style={s.secondaryButtonText}>Control de acceso</Text>
+            </Pressable>
+          ) : null}
+
+          <ThemeSelector />
 
           <Pressable onPress={() => signOut()} style={s.linkWrap}>
             <Text style={s.link}>Cerrar sesión</Text>

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 
 import { ROL_LABEL, STAFF_ROLES, type CreateStaffInput, type StaffRole } from "./api";
 
@@ -57,12 +56,24 @@ type Props = {
 };
 
 export function UserForm({ busy, serverError, onSubmit }: Props) {
+  const { s, p } = useEventStyles();
   const [nombre, setNombre] = useState("");
   const [usuario, setUsuario] = useState("");
-  const [rol, setRol] = useState<StaffRole>("seller");
+  const [roles, setRoles] = useState<StaffRole[]>(["seller"]);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  function toggleRole(r: StaffRole) {
+    setRoles((prev) => {
+      if (prev.includes(r)) {
+        // Al menos un rol: no se puede quitar el último.
+        if (prev.length === 1) return prev;
+        return prev.filter((x) => x !== r);
+      }
+      return [...prev, r];
+    });
+  }
 
   function handleGenerate() {
     setPassword(generateTempPassword());
@@ -74,7 +85,7 @@ export function UserForm({ busy, serverError, onSubmit }: Props) {
       nombre: nombre.trim(),
       usuario: usuario.trim().toLowerCase(),
       password,
-      rol, // Solo seller|access: el selector no ofrece admin.
+      roles, // 1-2 roles de trabajo: el selector no ofrece admin.
     };
     if (input.nombre.length < 1 || input.nombre.length > 120) {
       setFormError("El nombre es obligatorio (máx. 120 caracteres).");
@@ -86,6 +97,10 @@ export function UserForm({ busy, serverError, onSubmit }: Props) {
     }
     if (input.password.length < 8) {
       setFormError("La contraseña temporal debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (input.roles.length < 1) {
+      setFormError("Elige al menos un rol: Vendedor y/o Control de acceso.");
       return;
     }
     setFormError(null);
@@ -101,7 +116,7 @@ export function UserForm({ busy, serverError, onSubmit }: Props) {
         value={nombre}
         onChangeText={setNombre}
         placeholder="María Vendedora"
-        placeholderTextColor={C22.inkSoft}
+        placeholderTextColor={p.textSoft}
         editable={!busy}
         style={s.input}
       />
@@ -111,29 +126,29 @@ export function UserForm({ busy, serverError, onSubmit }: Props) {
         value={usuario}
         onChangeText={(v) => setUsuario(v.toLowerCase())}
         placeholder="vendedor1"
-        placeholderTextColor={C22.inkSoft}
+        placeholderTextColor={p.textSoft}
         autoCapitalize="none"
         autoCorrect={false}
         editable={!busy}
         style={s.input}
       />
 
-      <Text style={s.label}>Rol</Text>
+      <Text style={s.label}>Roles (pueden ser los dos)</Text>
       <View style={s.row}>
         {STAFF_ROLES.map((r) => {
-          const selected = rol === r;
+          const selected = roles.includes(r);
           return (
             <Pressable
               key={r}
               disabled={busy}
-              onPress={() => setRol(r)}
+              onPress={() => toggleRole(r)}
               style={({ pressed }) => [
                 s.secondaryButton,
-                selected && { backgroundColor: C22.wine, borderColor: C22.wine },
+                selected && { backgroundColor: p.primary, borderColor: p.primary },
                 { opacity: pressed || busy ? 0.7 : 1 },
               ]}>
-              <Text style={[s.secondaryButtonText, selected && { color: C22.cream }]}>
-                {ROL_LABEL[r]}
+              <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
+                {selected ? "✓ " : ""}{ROL_LABEL[r]}
               </Text>
             </Pressable>
           );
@@ -145,7 +160,7 @@ export function UserForm({ busy, serverError, onSubmit }: Props) {
         value={password}
         onChangeText={setPassword}
         placeholder="Mínimo 8 caracteres"
-        placeholderTextColor={C22.inkSoft}
+        placeholderTextColor={p.textSoft}
         secureTextEntry={!showPassword}
         autoCapitalize="none"
         autoCorrect={false}
@@ -171,7 +186,7 @@ export function UserForm({ busy, serverError, onSubmit }: Props) {
         disabled={busy}
         style={({ pressed }) => [s.primaryButton, { opacity: busy || pressed ? 0.7 : 1 }]}>
         {busy ? (
-          <ActivityIndicator color={C22.cream} />
+          <ActivityIndicator color={p.onPrimary} />
         ) : (
           <Text style={s.primaryButtonText}>Crear usuario</Text>
         )}

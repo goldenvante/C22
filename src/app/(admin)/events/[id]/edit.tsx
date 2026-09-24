@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
 import {
   deleteEventImage,
   eventImagePathFromUrl,
@@ -13,10 +12,11 @@ import {
   uploadEventImage,
 } from "@/features/events/api";
 import { EventForm, type EventFormValues, type PendingEventImage } from "@/features/events/EventForm";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import type { EventItem } from "@/features/events/types";
 
 export default function EditEventScreen() {
+  const { s, p } = useEventStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,7 +83,7 @@ export default function EditEventScreen() {
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }

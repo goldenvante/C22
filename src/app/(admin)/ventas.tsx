@@ -11,8 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { formatPrecio } from "@/features/events/types";
 import { allSales } from "@/features/sales/api";
 import {
@@ -32,6 +31,7 @@ const FILTROS: ({ value: TicketEstado | "TODOS"; label: string })[] = [
 ];
 
 export default function AdminVentasScreen() {
+  const { s, p } = useEventStyles();
   const [sales, setSales] = useState<SaleTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -75,10 +75,10 @@ export default function AdminVentasScreen() {
                   onPress={() => setFiltro(f.value)}
                   style={({ pressed }) => [
                     s.secondaryButton,
-                    selected && { backgroundColor: C22.wine, borderColor: C22.wine },
+                    selected && { backgroundColor: p.primary, borderColor: p.primary },
                     { opacity: pressed ? 0.7 : 1, paddingHorizontal: 12 },
                   ]}>
-                  <Text style={[s.secondaryButtonText, selected && { color: C22.cream }]}>
+                  <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
                     {f.label}
                   </Text>
                 </Pressable>
@@ -87,7 +87,7 @@ export default function AdminVentasScreen() {
           </View>
 
           {loading ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : (
             <FlatList
               data={visible}

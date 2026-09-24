@@ -11,8 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { formatPrecio, type EventItem } from "@/features/events/types";
 import {
   createCourtesy,
@@ -22,6 +21,7 @@ import {
 import { formatFolio, type SaleTicket } from "@/features/sales/types";
 
 export default function CortesiaScreen() {
+  const { s, p } = useEventStyles();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [eventId, setEventId] = useState("");
@@ -94,7 +94,7 @@ export default function CortesiaScreen() {
               <Text style={s.sectionTitle}>Cortesía generada</Text>
               <Text style={[s.screenTitle, { fontSize: 40 }]}>{formatFolio(created.folio)}</Text>
               <Text style={s.body}>{created.comprador_nombre}</Text>
-              <Text style={[s.smallBold, { color: C22.wine }]}>CORTESÍA · $0.00</Text>
+              <Text style={[s.smallBold, { color: p.primary }]}>CORTESÍA · $0.00</Text>
               <Pressable
                 onPress={() =>
                   router.push({ pathname: "/(seller)/boleto/[id]", params: { id: created.id } })
@@ -115,7 +115,7 @@ export default function CortesiaScreen() {
             <>
               <Text style={s.label}>Evento</Text>
               {loadingEvents ? (
-                <ActivityIndicator color={C22.wine} />
+                <ActivityIndicator color={p.primary} />
               ) : events.length === 0 ? (
                 <Text style={s.meta}>No hay eventos publicados por ahora.</Text>
               ) : (
@@ -129,10 +129,10 @@ export default function CortesiaScreen() {
                         onPress={() => setEventId(ev.id)}
                         style={({ pressed }) => [
                           s.secondaryButton,
-                          selected && { backgroundColor: C22.wine, borderColor: C22.wine },
+                          selected && { backgroundColor: p.primary, borderColor: p.primary },
                           { opacity: pressed || busy ? 0.7 : 1 },
                         ]}>
-                        <Text style={[s.secondaryButtonText, selected && { color: C22.cream }]}>
+                        <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
                           {ev.nombre} · {ev.codigo}
                         </Text>
                       </Pressable>
@@ -152,7 +152,7 @@ export default function CortesiaScreen() {
                 value={nombre}
                 onChangeText={setNombre}
                 placeholder="Nombre completo"
-                placeholderTextColor={C22.inkSoft}
+                placeholderTextColor={p.textSoft}
                 editable={!busy}
                 style={s.input}
               />
@@ -162,7 +162,7 @@ export default function CortesiaScreen() {
                 value={telefono}
                 onChangeText={setTelefono}
                 placeholder="55 1234 5678"
-                placeholderTextColor={C22.inkSoft}
+                placeholderTextColor={p.textSoft}
                 keyboardType="phone-pad"
                 editable={!busy}
                 style={s.input}
@@ -180,7 +180,7 @@ export default function CortesiaScreen() {
                   { opacity: busy || !eventId || disponibles <= 0 || pressed ? 0.5 : 1 },
                 ]}>
                 {busy ? (
-                  <ActivityIndicator color={C22.cream} />
+                  <ActivityIndicator color={p.onPrimary} />
                 ) : (
                   <Text style={s.primaryButtonText}>Generar cortesía</Text>
                 )}

@@ -11,8 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { formatPrecio } from "@/features/events/types";
 import { mySales } from "@/features/sales/api";
 import {
@@ -31,6 +30,7 @@ function formatFechaCorta(iso: string): string {
 }
 
 export default function MisVentasScreen() {
+  const { s, p } = useEventStyles();
   const [sales, setSales] = useState<SaleTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,7 +63,7 @@ export default function MisVentasScreen() {
           <BackHeader fallback="/(seller)" />
 
           {loading ? (
-            <ActivityIndicator color={C22.wine} />
+            <ActivityIndicator color={p.primary} />
           ) : (
             <FlatList
               data={sales}
@@ -89,7 +89,7 @@ export default function MisVentasScreen() {
                       </View>
                       <Text style={s.body}>{item.comprador_nombre}</Text>
                       {item.es_cortesia ? (
-                        <Text style={[s.smallBold, { color: C22.wine }]}>CORTESÍA</Text>
+                        <Text style={[s.smallBold, { color: p.primary }]}>CORTESÍA</Text>
                       ) : null}
                       <Text style={s.meta}>
                         {item.evento?.nombre ?? "Evento no disponible"} · {item.fase?.nombre ?? ""}

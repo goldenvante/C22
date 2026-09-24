@@ -4,8 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import {
   getEntryTicket,
   getScanEntry,
@@ -16,6 +15,7 @@ import { formatFechaHora, RESULTADO_LABEL } from "@/features/access/display";
 import { BoletoCard, type BoletoData } from "@/features/sales/BoletoCard";
 
 export default function AccesoDetalleScreen() {
+  const { s, p } = useEventStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [scan, setScan] = useState<ScanRecord | null>(null);
   const [bundle, setBundle] = useState<EntryTicketBundle | null>(null);
@@ -65,7 +65,7 @@ export default function AccesoDetalleScreen() {
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }

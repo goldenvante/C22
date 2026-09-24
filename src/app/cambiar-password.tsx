@@ -11,8 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/auth/AuthProvider";
-import { C22 } from "@/constants/theme";
-import { eventStyles as s } from "@/features/events/eventStyles";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { supabase } from "@/lib/supabase";
 
 const MIN_LEN = 8;
@@ -38,6 +37,7 @@ function friendlyUpdateError(message: string): string {
  * RouteGate mantiene al usuario aquí hasta que el flag quede limpio.
  */
 export default function CambiarPasswordScreen() {
+  const { s, p } = useEventStyles();
   const { session, signOut } = useAuth();
   const [nueva, setNueva] = useState("");
   const [repite, setRepite] = useState("");
@@ -89,7 +89,7 @@ export default function CambiarPasswordScreen() {
   if (!session) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color={C22.wine} />
+        <ActivityIndicator color={p.primary} />
       </View>
     );
   }
@@ -111,7 +111,7 @@ export default function CambiarPasswordScreen() {
             value={nueva}
             onChangeText={setNueva}
             placeholder={`Mínimo ${MIN_LEN} caracteres`}
-            placeholderTextColor={C22.inkSoft}
+            placeholderTextColor={p.textSoft}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
@@ -124,7 +124,7 @@ export default function CambiarPasswordScreen() {
             value={repite}
             onChangeText={setRepite}
             placeholder="Repite la contraseña"
-            placeholderTextColor={C22.inkSoft}
+            placeholderTextColor={p.textSoft}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
@@ -140,7 +140,7 @@ export default function CambiarPasswordScreen() {
             disabled={busy}
             style={({ pressed }) => [s.primaryButton, { opacity: busy || pressed ? 0.7 : 1 }]}>
             {busy ? (
-              <ActivityIndicator color={C22.cream} />
+              <ActivityIndicator color={p.onPrimary} />
             ) : (
               <Text style={s.primaryButtonText}>Guardar nueva contraseña</Text>
             )}

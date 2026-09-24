@@ -2,9 +2,11 @@ import { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useColorScheme } from "react-native";
+import type { ReactNode } from "react";
 
 import { AuthProvider, useAuth } from "@/auth/AuthProvider";
+import { ThemeChoiceProvider, useThemeChoice } from "@/branding/ThemeChoice";
+import { hasRole } from "@/lib/supabase";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -18,6 +20,8 @@ function RouteGate() {
     SplashScreen.hideAsync().catch(() => undefined);
     const group = segments[0];
     if (!session) {
+      // Registro inicial del comité: accesible sin sesión (pantalla única).
+      if (group === "setup") return;
       if (group !== undefined) router.replace("/");
       return;
     }
@@ -33,12 +37,26 @@ function RouteGate() {
       return;
     }
     if (!profile) return;
-    if (profile.rol === "admin") {
-      if (group !== "(admin)") router.replace("/(admin)");
-    } else if (profile.rol === "seller") {
-      if (group !== "(seller)") router.replace("/(seller)");
-    } else {
-      if (group !== "(access)") router.replace("/(access)");
+    // Grupos permitidos según roles (un usuario puede tener seller+access).
+    const allowed = hasRole(profile, "admin")
+      ? ["(admin)"]
+      : [
+          ...(hasRole(profile, "seller") ? ["(seller)"] : []),
+          ...(hasRole(profile, "access") ? ["(access)"] : []),
+        ];
+    if (allowed.length === 0) {
+      router.replace("/");
+      return;
+    }
+    if (!group || !allowed.includes(group)) {
+      // Destino principal: admin > seller > access.
+      router.replace(
+        allowed.includes("(admin)")
+          ? "/(admin)"
+          : allowed.includes("(seller)")
+            ? "/(seller)"
+            : "/(access)",
+      );
     }
   }, [loading, session, profile, requiresPasswordChange, segments, router]);
 
@@ -59,6 +77,7 @@ function AuthStack() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="setup" />
       <Stack.Screen name="cambiar-password" />
       <Stack.Protected guard={authed}>
         <Stack.Screen name="(admin)/index" />
@@ -71,13 +90,16 @@ function AuthStack() {
         <Stack.Screen name="(admin)/ventas/[id]" />
         <Stack.Screen name="(admin)/cortesias" />
         <Stack.Screen name="(admin)/reporte" />
+        <Stack.Screen name="(admin)/ahorro" />
         <Stack.Screen name="(seller)/index" />
         <Stack.Screen name="(seller)/nueva-venta" />
         <Stack.Screen name="(seller)/ventas" />
         <Stack.Screen name="(seller)/ventas/[id]" />
         <Stack.Screen name="(seller)/boleto/[id]" />
         <Stack.Screen name="(seller)/cortesia" />
+        <Stack.Screen name="(seller)/ahorro" />
         <Stack.Screen name="(access)/index" />
+        <Stack.Screen name="(access)/ahorro" />
         <Stack.Screen name="(access)/historial" />
         <Stack.Screen name="(access)/historial/[id]" />
       </Stack.Protected>
@@ -86,13 +108,20 @@ function AuthStack() {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <AuthProvider>
-        <RouteGate />
-        <AuthStack />
-      </AuthProvider>
-    </ThemeProvider>
+    <ThemeChoiceProvider>
+      <AppTheme>
+        <AuthProvider>
+          <RouteGate />
+          <AuthStack />
+        </AuthProvider>
+      </AppTheme>
+    </ThemeChoiceProvider>
   );
+}
+
+/** Tema de navegación según la elección del usuario (auto/claro/oscuro). */
+function AppTheme({ children }: { children: ReactNode }) {
+  const { scheme } = useThemeChoice();
+  return <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>{children}</ThemeProvider>;
 }

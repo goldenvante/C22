@@ -1,5 +1,5 @@
-# Comité C22 · Configuración Supabase CLI (sin secretos; los secretos van con
-# `supabase secrets set` y nunca se escriben en este archivo).
+# App multicomité · Configuración Supabase CLI (sin secretos; los secretos van
+# con `supabase secrets set` y nunca se escriben en este archivo).
 # project_id se completa al vincular el proyecto: supabase link --project-ref <ref>
 
 [functions.admin-create-user]
@@ -8,4 +8,10 @@ enabled = true
 # La autenticación la hace la propia función en código:
 #  - modo bootstrap -> ADMIN_BOOTSTRAP_SECRET + no existe ningún admin.
 #  - modo admin     -> JWT válido de un profile con rol admin y activo=true.
+verify_jwt = false
+
+[functions.committee-signup]
+enabled = true
+# Registro público de comité + admin (pantalla inicial de la app).
+# Sin JWT: valida datos y crea comité + Auth + profile con service_role.
 verify_jwt = false
