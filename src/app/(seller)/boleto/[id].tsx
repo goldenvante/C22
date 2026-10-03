@@ -56,7 +56,13 @@ export default function BoletoScreen() {
 
   /** Captura SOLO la tarjeta del boleto (ya renderizada con portada y QR). */
   async function captureTicket(): Promise<string> {
-    return captureRef(cardRef, { format: "png", quality: 1, result: "tmpfile" });
+    return captureRef(cardRef, {
+      format: "png",
+      quality: 1,
+      result: "tmpfile",
+      width: 1080,
+      height: 1920,
+    });
   }
 
   async function handleSave() {

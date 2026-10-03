@@ -58,13 +58,16 @@ export default function VentaDetalleScreen() {
     <View style={s.screen}>
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         <ScrollView contentContainerStyle={s.scroll}>
-          <BackHeader fallback="/(seller)/ventas" />
           {error && !sale ? (
-            <Text style={s.error}>{error}</Text>
+            <>
+              <BackHeader fallback="/(seller)/ventas" />
+              <Text style={s.error}>{error}</Text>
+            </>
           ) : sale ? (
             <>
-              <Text style={[s.screenTitle, { fontSize: 40 }]}>{formatFolio(sale.folio)}</Text>
+              <Text style={s.folio}>{formatFolio(sale.folio, sale.evento?.codigo ?? "")}</Text>
               <View style={s.goldRule} />
+              <BackHeader fallback="/(seller)/ventas" />
               <View style={ticketBadge(sale.estado).pill}>
                 <Text style={ticketBadge(sale.estado).text}>
                   {TICKET_ESTADO_LABEL[sale.estado]}

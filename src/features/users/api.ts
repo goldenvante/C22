@@ -21,6 +21,7 @@ export function isAdmin(profile: Profile | null | undefined): boolean {
 }
 
 const USUARIO_RE = /^[a-z0-9._-]{3,32}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Lista todos los perfiles del comité: activos primero, luego por nombre. */
 export async function listStaff(): Promise<Profile[]> {
@@ -129,4 +130,30 @@ export async function createStaff(input: CreateStaffInput): Promise<CreatedStaff
   const created = data as { ok?: boolean; id?: string; usuario?: string; roles?: StaffRole[] };
   if (!created?.id) throw new Error("Respuesta inesperada del servidor.");
   return { id: created.id, usuario: created.usuario ?? usuario, roles: created.roles ?? roles };
+}
+
+async function mapResetError(error: unknown): Promise<Error> {
+  const e = error as { status?: number; context?: unknown };
+  const status = typeof e?.status === "number" ? e.status : 0;
+  if (status === 401 || status === 403) {
+    return new Error("Tu sesión expiró o no tienes permiso. Inicia sesión de nuevo.");
+  }
+  try {
+    const body = (await (e.context as Response).json()) as { message?: string };
+    if (body?.message) return new Error(body.message);
+  } catch {}
+  return new Error("No se pudo restablecer la contraseña. Inténtalo de nuevo.");
+}
+
+export async function resetStaffPassword(id: string, password: string): Promise<void> {
+  if (!UUID_RE.test(id)) {
+    throw new Error("Usuario inválido.");
+  }
+  if (password.length < 8) {
+    throw new Error("La contraseña temporal debe tener al menos 8 caracteres.");
+  }
+  const { error } = await supabase.functions.invoke("admin-create-user", {
+    body: { mode: "reset", userId: id, password },
+  });
+  if (error) throw await mapResetError(error);
 }

@@ -18,6 +18,7 @@ import { useEventStyles } from "@/features/events/eventStyles";
 import {
   listStaff,
   profileRolesLabel,
+  resetStaffPassword,
   setActivo,
   updateNombre,
   updateRoles,
@@ -36,6 +37,8 @@ export default function UsersScreen() {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState("");
+  const [resetId, setResetId] = useState<string | null>(null);
+  const [resetPass, setResetPass] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -119,6 +122,24 @@ export default function UsersScreen() {
     }
   }
 
+  async function handleResetPassword(user: Profile) {
+    setBusyId(user.id);
+    setError(null);
+    try {
+      await resetStaffPassword(user.id, resetPass);
+      setResetId(null);
+      setResetPass("");
+      Alert.alert(
+        "Contraseña restablecida",
+        `Contraseña temporal lista para @${user.usuario}. Al iniciar sesión deberá cambiarla por la suya.`,
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <View style={s.screen}>
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
@@ -128,7 +149,9 @@ export default function UsersScreen() {
           <BackHeader fallback="/(admin)" />
 
           {loading ? (
-            <ActivityIndicator color={p.primary} />
+            <View style={s.center}>
+              <ActivityIndicator color={p.primary} />
+            </View>
           ) : (
             <FlatList
               data={users}
@@ -224,6 +247,51 @@ export default function UsersScreen() {
                             </Text>
                           </Pressable>
                         </View>
+                        {resetId === item.id ? (
+                          <View style={{ gap: 4, marginTop: 6 }}>
+                            <TextInput
+                              value={resetPass}
+                              onChangeText={setResetPass}
+                              placeholder="Contraseña temporal (mínimo 8)"
+                              placeholderTextColor={p.textSoft}
+                              secureTextEntry
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              editable={!busy}
+                              style={s.input}
+                            />
+                            <View style={s.row}>
+                              <Pressable
+                                disabled={busy}
+                                onPress={() => handleResetPassword(item)}
+                                style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+                                <Text style={s.secondaryButtonText}>Guardar</Text>
+                              </Pressable>
+                              <Pressable
+                                disabled={busy}
+                                onPress={() => {
+                                  setResetId(null);
+                                  setResetPass("");
+                                }}>
+                                <Text style={s.link}>Cancelar</Text>
+                              </Pressable>
+                            </View>
+                          </View>
+                        ) : (
+                          <Pressable
+                            disabled={busy}
+                            onPress={() => {
+                              setResetId(item.id);
+                              setResetPass("");
+                              setError(null);
+                            }}
+                            style={({ pressed }) => [
+                              s.secondaryButton,
+                              { marginTop: 6, opacity: pressed || busy ? 0.7 : 1 },
+                            ]}>
+                            <Text style={s.secondaryButtonText}>Restablecer contraseña</Text>
+                          </Pressable>
+                        )}
                         {isSelf ? <Text style={s.meta}>Esta es tu cuenta.</Text> : null}
                       </View>
                     )}

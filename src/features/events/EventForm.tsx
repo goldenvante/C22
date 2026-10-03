@@ -127,7 +127,7 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [16, 9],
+        aspect: [9, 16],
         quality: 0.8,
       });
       if (!res.canceled && res.assets?.[0]?.uri) {
@@ -154,8 +154,8 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
       setFormError("El nombre es obligatorio (máx. 160 caracteres).");
       return;
     }
-    if (v.codigo.length < 2 || v.codigo.length > 24) {
-      setFormError("El código debe tener entre 2 y 24 caracteres.");
+    if (v.codigo.length < 2 || v.codigo.length > 8) {
+      setFormError("El código debe tener entre 2 y 8 caracteres.");
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(v.fecha) || !parseFechaLocal(v.fecha)) {
@@ -202,6 +202,7 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
           placeholderTextColor={p.textSoft}
           autoCapitalize="characters"
           autoCorrect={false}
+          maxLength={8}
           editable={!busy}
           style={[s.input, { flex: 1 }]}
         />
@@ -270,7 +271,7 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
           <Image
             source={{ uri: displayUri }}
             contentFit="cover"
-            style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 8, borderWidth: 1, borderColor: p.primary }}
+            style={{ width: "100%", aspectRatio: 9 / 16, borderRadius: 8, borderWidth: 1, borderColor: p.primary }}
           />
           <View style={s.row}>
             <Pressable
@@ -332,7 +333,7 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
             <View style={s.row}>
               <Pressable
                 onPress={() => setDateOpen(false)}
-                style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+                style={({ pressed }) => [s.secondaryButton, { paddingVertical: 16, opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={s.secondaryButtonText}>Cancelar</Text>
               </Pressable>
               <Pressable
@@ -375,7 +376,7 @@ export function EventForm({ initial, submitLabel, busy, serverError, onSubmit }:
             <View style={s.row}>
               <Pressable
                 onPress={() => setTimeOpen(false)}
-                style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+                style={({ pressed }) => [s.secondaryButton, { paddingVertical: 16, opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={s.secondaryButtonText}>Cancelar</Text>
               </Pressable>
               <Pressable

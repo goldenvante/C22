@@ -91,7 +91,7 @@ export type ScanRecord = {
   resultado: ValidateCode;
   qrToken: string | null;
   /** Join permitido por RLS (eventos publicados). Null si no aplica. */
-  evento: { nombre: string } | null;
+  evento: { nombre: string; codigo: string } | null;
   // NOTA: sin join a tickets (RLS de access lo bloquea) y sin fase/precio/
   // comprador: la RPC no los devuelve y no deben inventarse.
 };
@@ -103,7 +103,7 @@ export type ScanRecord = {
 export async function myScans(): Promise<ScanRecord[]> {
   const { data, error } = await supabase
     .from("entries")
-    .select("id,ticket_id,event_id,scanned_at,resultado,qr_token,events(nombre)")
+    .select("id,ticket_id,event_id,scanned_at,resultado,qr_token,events(nombre,codigo)")
     .order("scanned_at", { ascending: false });
   if (error) {
     const message = error.message ?? "";
@@ -116,7 +116,7 @@ export async function myScans(): Promise<ScanRecord[]> {
 }
 
 function toScanRecord(row: Record<string, unknown>): ScanRecord {
-  const evento = row.events as { nombre?: string } | null;
+  const evento = row.events as { nombre?: string; codigo?: string } | null;
   const resultado = row.resultado as string;
   return {
     id: row.id as string,
@@ -127,7 +127,7 @@ function toScanRecord(row: Record<string, unknown>): ScanRecord {
       ? resultado
       : "NO_EXISTE") as ValidateCode,
     qrToken: (row.qr_token as string | null) ?? null,
-    evento: evento?.nombre ? { nombre: evento.nombre } : null,
+    evento: evento?.nombre ? { nombre: evento.nombre, codigo: evento.codigo ?? "" } : null,
   };
 }
 
@@ -138,7 +138,7 @@ function toScanRecord(row: Record<string, unknown>): ScanRecord {
 export async function getScanEntry(id: string): Promise<ScanRecord | null> {
   const { data, error } = await supabase
     .from("entries")
-    .select("id,ticket_id,event_id,scanned_at,resultado,qr_token,events(nombre)")
+    .select("id,ticket_id,event_id,scanned_at,resultado,qr_token,events(nombre,codigo)")
     .eq("id", id)
     .maybeSingle();
   if (error) {

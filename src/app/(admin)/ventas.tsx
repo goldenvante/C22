@@ -87,7 +87,9 @@ export default function AdminVentasScreen() {
           </View>
 
           {loading ? (
-            <ActivityIndicator color={p.primary} />
+            <View style={s.center}>
+              <ActivityIndicator color={p.primary} />
+            </View>
           ) : (
             <FlatList
               data={visible}
@@ -95,7 +97,9 @@ export default function AdminVentasScreen() {
               contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
               ListEmptyComponent={
-                <Text style={s.meta}>{error ?? "Aún no hay ventas registradas."}</Text>
+                <Text style={error ? s.error : s.meta}>
+                  {error ?? "Aún no hay ventas registradas."}
+                </Text>
               }
               renderItem={({ item }) => {
                 const badge = ticketBadge(item.estado);
@@ -106,7 +110,7 @@ export default function AdminVentasScreen() {
                     }>
                     <View style={s.card}>
                       <View style={s.row}>
-                        <Text style={[s.smallBold, { flex: 1 }]}>{formatFolio(item.folio)}</Text>
+                        <Text style={[s.smallBold, { flex: 1 }]}>{formatFolio(item.folio, item.evento?.codigo ?? "")}</Text>
                         <View style={badge.pill}>
                           <Text style={badge.text}>{TICKET_ESTADO_LABEL[item.estado]}</Text>
                         </View>

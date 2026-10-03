@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 
+import { Type } from "@/constants/type";
 import { useEventStyles } from "@/features/events/eventStyles";
 
 type BackFallback =
@@ -28,7 +29,7 @@ export function BackHeader({ label = "Volver", fallback }: { label?: string; fal
   return (
     <View style={{ paddingVertical: 4 }}>
       <Pressable onPress={goBack} hitSlop={8}>
-        <Text style={{ fontSize: 15, fontWeight: "700", color: p.primary }}>
+        <Text style={{ fontSize: 14, fontFamily: Type.bodyBold, color: p.primary }}>
           {"← "}
           {label}
         </Text>

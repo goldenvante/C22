@@ -51,7 +51,7 @@ export default function NuevaVentaScreen() {
           {created ? (
             <View style={s.card}>
               <Text style={s.sectionTitle}>Venta registrada</Text>
-              <Text style={[s.screenTitle, { fontSize: 40 }]}>{formatFolio(created.folio)}</Text>
+              <Text style={s.folio}>{formatFolio(created.folio, created.evento?.codigo ?? "")}</Text>
               <Text style={s.body}>{created.comprador_nombre}</Text>
               <Text style={s.meta}>
                 {created.evento?.nombre ?? "Evento"} · {created.fase?.nombre ?? ""}
@@ -86,7 +86,7 @@ export default function NuevaVentaScreen() {
                 style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={s.secondaryButtonText}>Ver detalle</Text>
               </Pressable>
-              <Pressable onPress={handleAnother} style={s.linkWrap}>
+              <Pressable onPress={handleAnother}                 style={({ pressed }) => [s.linkWrap, { opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={s.link}>Registrar otra venta</Text>
               </Pressable>
             </>

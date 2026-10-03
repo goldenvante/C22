@@ -13,6 +13,9 @@
 //    exista ningún profile con rol='admin'. Sin JWT.
 //  - admin: un admin activo crea seller|access. Exige JWT válido de un admin.
 //    Nunca crea rol='admin'.
+//  - reset: un admin activo restablece la contraseña de un usuario de su
+//    comité y marca debe_cambiar_password para forzar el cambio en el primer
+//    inicio. Exige JWT válido de un admin.
 // Contraseñas: solo viajan al Auth Admin API. Nunca se guardan ni devuelven.
 // Sin claves reales en el código: el contexto lee SUPABASE_URL y
 // SUPABASE_SECRET_KEYS pre-provistos por el runtime.
@@ -29,6 +32,7 @@ const BOOTSTRAP_SECRET = Deno.env.get("ADMIN_BOOTSTRAP_SECRET") ?? "";
 
 // Mismo formato que el CHECK profiles_usuario_formato de la migración 01.
 const USUARIO_RE = /^[a-z0-9._-]{3,32}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIN_PASSWORD_LEN = 8;
 
 type StaffRol = "seller" | "access";
@@ -188,7 +192,17 @@ async function handleBootstrap(db: AdminDb, body: Record<string, unknown>): Prom
   return await createAuthUserWithProfile({ db, usuario, nombre, password: body.password as string, roles: ["admin"], committeeId: null, profileConflict: { code: "ADMIN_EXISTS", message: "Ya existe un Admin Principal." } });
 }
 
-async function handleAdmin(req: Request, db: AdminDb, body: Record<string, unknown>): Promise<Response> {
+type AdminCaller = { userId: string; committeeId: string | null };
+
+function isResponse(value: unknown): value is Response {
+  return value instanceof Response;
+}
+
+async function verifyAdminCaller(
+  req: Request,
+  db: AdminDb,
+  forbiddenMessage: string,
+): Promise<AdminCaller | Response> {
   const authHeader = req.headers.get("Authorization") ?? "";
   const jwt = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
   if (!jwt) {
@@ -211,9 +225,18 @@ async function handleAdmin(req: Request, db: AdminDb, body: Record<string, unkno
   const callerRoles = (profile as { roles?: unknown } | null)?.roles;
   const isCallerAdmin = Array.isArray(callerRoles) && callerRoles.includes("admin");
   if (!profile || !isCallerAdmin || (profile as { activo?: boolean }).activo !== true) {
-    return fail(403, "FORBIDDEN", "Solo un Admin Principal activo puede crear usuarios.");
+    return fail(403, "FORBIDDEN", forbiddenMessage);
   }
-  const callerCommittee = (profile as { committee_id?: string | null }).committee_id ?? null;
+  return {
+    userId: caller.user.id,
+    committeeId: (profile as { committee_id?: string | null }).committee_id ?? null,
+  };
+}
+
+async function handleAdmin(req: Request, db: AdminDb, body: Record<string, unknown>): Promise<Response> {
+  const caller = await verifyAdminCaller(req, db, "Solo un Admin Principal activo puede crear usuarios.");
+  if (isResponse(caller)) return caller;
+  const callerCommittee = caller.committeeId;
 
   // Allowlist estricta: 1-2 roles de trabajo (nunca 'admin' por este modo).
   // Acepta `roles: ["seller","access"]` o el singular legacy `rol`.
@@ -245,6 +268,50 @@ async function handleAdmin(req: Request, db: AdminDb, body: Record<string, unkno
   return await createAuthUserWithProfile({ db, usuario, nombre, password: body.password as string, roles, committeeId: callerCommittee, profileConflict: { code: "USUARIO_TAKEN", message: "El usuario ya existe." } });
 }
 
+async function handleReset(req: Request, db: AdminDb, body: Record<string, unknown>): Promise<Response> {
+  const caller = await verifyAdminCaller(req, db, "Solo un Admin Principal activo puede restablecer contraseñas.");
+  if (isResponse(caller)) return caller;
+
+  const userId = typeof body.userId === "string" ? body.userId.trim() : "";
+  if (!UUID_RE.test(userId)) {
+    return fail(400, "INVALID_USER", "Usuario inválido.");
+  }
+  if (!validatePassword(body.password)) {
+    return fail(400, "INVALID_PASSWORD", `Contraseña inválida (mínimo ${MIN_PASSWORD_LEN} caracteres).`);
+  }
+
+  try {
+    const { data: target, error } = await db
+      .from("profiles")
+      .select("id, committee_id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!target) return fail(404, "USER_NOT_FOUND", "El usuario no existe.");
+    const targetCommittee = (target as { committee_id?: string | null }).committee_id ?? null;
+    if (targetCommittee !== caller.committeeId) {
+      return fail(403, "FORBIDDEN", "Solo puedes restablecer usuarios de tu comité.");
+    }
+  } catch (e) {
+    return fail(500, "PROFILE_CHECK_FAILED", (e as Error).message);
+  }
+
+  const { data: existing, error: readError } = await db.auth.admin.getUserById(userId);
+  if (readError || !existing.user) {
+    return fail(404, "USER_NOT_FOUND", "El usuario no existe en Auth.");
+  }
+
+  const { error: updateError } = await db.auth.admin.updateUserById(userId, {
+    password: body.password as string,
+    user_metadata: { ...(existing.user.user_metadata ?? {}), debe_cambiar_password: true },
+  });
+  if (updateError) {
+    return fail(500, "AUTH_UPDATE_FAILED", `No se pudo restablecer la contraseña: ${updateError.message}`);
+  }
+
+  return json(200, { ok: true, id: userId });
+}
+
 export default {
   fetch: withSupabase({ auth: "none" }, async (req, ctx) => {
     if (req.method !== "POST") {
@@ -263,6 +330,7 @@ export default {
     const db = ctx.supabaseAdmin;
     if (body.mode === "bootstrap") return await handleBootstrap(db, body);
     if (body.mode === "admin") return await handleAdmin(req, db, body);
-    return fail(400, "INVALID_MODE", "Modo inválido: usa 'bootstrap' o 'admin'.");
+    if (body.mode === "reset") return await handleReset(req, db, body);
+    return fail(400, "INVALID_MODE", "Modo inválido: usa 'bootstrap', 'admin' o 'reset'.");
   }),
 };

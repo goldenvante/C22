@@ -1,16 +1,17 @@
 import { useCallback, useMemo } from "react";
 import { StyleSheet, type TextStyle, type ViewStyle } from "react-native";
 
-import { Spacing } from "@/constants/theme";
-import { useCommittee } from "./useCommittee";
-import { useThemeChoice } from "./ThemeChoice";
+import { Spacing, Type } from "@/constants/theme";
+import { useCommittee } from "@/branding/useCommittee";
+import { useThemeChoice } from "@/branding/ThemeChoice";
 import {
   NEUTRAL_BRAND,
   NEUTRAL_LIGHT,
   buildPalette,
+  readableOn,
   type BrandInput,
   type UIPalette,
-} from "./palette";
+} from "@/branding/palette";
 import type { EventEstado } from "./types";
 
 /**
@@ -45,12 +46,18 @@ export function makeEventStyles(p: UIPalette) {
     },
     screenTitle: {
       fontSize: 28,
-      fontWeight: "700",
+      fontFamily: Type.heading,
+      color: p.title,
+    } as TextStyle,
+    /** Cifra protagonista (folio HALL26-001). Una sola medida, sin overrides. */
+    folio: {
+      fontSize: 40,
+      fontFamily: Type.heading,
       color: p.title,
     } as TextStyle,
     sectionTitle: {
       fontSize: 20,
-      fontWeight: "700",
+      fontFamily: Type.heading,
       color: p.title,
     } as TextStyle,
     goldRule: {
@@ -62,43 +69,47 @@ export function makeEventStyles(p: UIPalette) {
     body: {
       fontSize: 16,
       lineHeight: 24,
+      fontFamily: Type.body,
       color: p.text,
     } as TextStyle,
     small: {
       fontSize: 14,
       lineHeight: 20,
+      fontFamily: Type.body,
       color: p.text,
     } as TextStyle,
     smallBold: {
       fontSize: 14,
       lineHeight: 20,
-      fontWeight: "700",
+      fontFamily: Type.bodyBold,
       color: p.text,
     } as TextStyle,
     label: {
       fontSize: 14,
-      fontWeight: "700",
+      fontFamily: Type.bodyBold,
       color: p.text,
       marginTop: Spacing.one,
     } as TextStyle,
     meta: {
       fontSize: 14,
       lineHeight: 20,
+      fontFamily: Type.body,
       color: p.textSoft,
     } as TextStyle,
     error: {
       fontSize: 14,
       lineHeight: 20,
+      fontFamily: Type.body,
       color: p.danger,
     } as TextStyle,
     link: {
       fontSize: 14,
-      fontWeight: "700",
+      fontFamily: Type.bodyBold,
       color: p.title,
     } as TextStyle,
     dangerLink: {
       fontSize: 14,
-      fontWeight: "700",
+      fontFamily: Type.bodyBold,
       color: p.danger,
     } as TextStyle,
     input: {
@@ -110,14 +121,16 @@ export function makeEventStyles(p: UIPalette) {
       paddingHorizontal: Spacing.three,
       paddingVertical: Spacing.two,
       fontSize: 16,
+      fontFamily: Type.body,
     },
     fieldText: {
       fontSize: 16,
-      fontWeight: "600",
+      fontFamily: Type.bodySemibold,
       color: p.text,
     } as TextStyle,
     fieldPlaceholder: {
       fontSize: 16,
+      fontFamily: Type.body,
       color: p.textSoft,
     } as TextStyle,
     row: {
@@ -134,7 +147,7 @@ export function makeEventStyles(p: UIPalette) {
     },
     primaryButtonText: {
       fontSize: 14,
-      fontWeight: "700",
+      fontFamily: Type.bodyBold,
       color: p.onPrimary,
     } as TextStyle,
     secondaryButton: {
@@ -148,7 +161,7 @@ export function makeEventStyles(p: UIPalette) {
     },
     secondaryButtonText: {
       fontSize: 14,
-      fontWeight: "700",
+      fontFamily: Type.bodyBold,
       color: p.title,
     } as TextStyle,
     dangerButton: {
@@ -160,8 +173,8 @@ export function makeEventStyles(p: UIPalette) {
     },
     dangerButtonText: {
       fontSize: 14,
-      fontWeight: "700",
-      color: "#FFFFFF",
+      fontFamily: Type.bodyBold,
+      color: readableOn(p.danger),
     } as TextStyle,
     linkWrap: {
       alignItems: "center",
@@ -169,11 +182,12 @@ export function makeEventStyles(p: UIPalette) {
     },
     faseOn: {
       fontSize: 14,
-      fontWeight: "700",
+      fontFamily: Type.bodyBold,
       color: p.success,
     } as TextStyle,
     faseOff: {
       fontSize: 14,
+      fontFamily: Type.body,
       color: p.textSoft,
     } as TextStyle,
     modalOverlay: {
@@ -212,23 +226,23 @@ export function estadoBadge(estado: EventEstado, p: UIPalette = NEUTRAL_LIGHT): 
     case "publicado":
       return {
         pill: { ...badgeBase, backgroundColor: p.primary, borderColor: p.primary },
-        text: { fontSize: 13, fontWeight: "700", color: p.onPrimary },
+        text: { fontSize: 13, fontFamily: Type.bodyBold, color: p.onPrimary },
       };
     case "finalizado":
       return {
         pill: { ...badgeBase, backgroundColor: p.success, borderColor: p.success },
-        text: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
+        text: { fontSize: 13, fontFamily: Type.bodyBold, color: readableOn(p.success) },
       };
     case "cancelado":
       return {
         pill: { ...badgeBase, backgroundColor: p.danger, borderColor: p.danger },
-        text: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
+        text: { fontSize: 13, fontFamily: Type.bodyBold, color: readableOn(p.danger) },
       };
     case "borrador":
     default:
       return {
         pill: { ...badgeBase, backgroundColor: p.secondaryBg, borderColor: p.textSoft },
-        text: { fontSize: 13, fontWeight: "700", color: p.text },
+        text: { fontSize: 13, fontFamily: Type.bodyBold, color: p.text },
       };
   }
 }

@@ -7,7 +7,8 @@ import { BackHeader } from "@/components/back-header";
 import { changeEventEstado, getEvent } from "@/features/events/api";
 import { useEventStyles } from "@/features/events/eventStyles";
 import { PhaseManager } from "@/features/events/PhaseManager";
-import { exportCierrePdf, exportCierreXlsx, loadEventTickets } from "@/features/reports/xlsx";
+import { exportCierrePdf, loadEventTickets } from "@/features/reports/pdfExport";
+import { formatMoney, postEventSavings } from "@/features/savings/api";
 import {
   ESTADO_LABEL,
   formatFecha,
@@ -33,6 +34,9 @@ export default function EventDetailScreen() {
   const [busy, setBusy] = useState(false);
   const [busyCierre, setBusyCierre] = useState(false);
   const [cierreError, setCierreError] = useState<string | null>(null);
+  const [busyMeta, setBusyMeta] = useState(false);
+  const [metaMsg, setMetaMsg] = useState<string | null>(null);
+  const [metaError, setMetaError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) {
@@ -83,20 +87,6 @@ export default function EventDetailScreen() {
     );
   }
 
-  async function handleCierre() {
-    if (!event || busyCierre) return;
-    setBusyCierre(true);
-    setCierreError(null);
-    try {
-      const tickets = await loadEventTickets(event.id);
-      await exportCierreXlsx(event, tickets);
-    } catch (e) {
-      setCierreError((e as Error).message);
-    } finally {
-      setBusyCierre(false);
-    }
-  }
-
   async function handleCierrePdf() {
     if (!event || busyCierre) return;
     setBusyCierre(true);
@@ -108,6 +98,27 @@ export default function EventDetailScreen() {
       setCierreError((e as Error).message);
     } finally {
       setBusyCierre(false);
+    }
+  }
+
+  async function handleEnviarMeta() {
+    if (!event || busyMeta) return;
+    setBusyMeta(true);
+    setMetaError(null);
+    setMetaMsg(null);
+    try {
+      const r = await postEventSavings(event.id);
+      setMetaMsg(
+        r.monto <= 0
+          ? "Este evento no tiene ingresos por enviar."
+          : r.yaExistia
+            ? `Ya estaba en Meta: ${formatMoney(r.monto)}.`
+            : `Enviado a Meta: ${formatMoney(r.monto)}.`,
+      );
+    } catch (e) {
+      setMetaError((e as Error).message);
+    } finally {
+      setBusyMeta(false);
     }
   }
 
@@ -127,9 +138,9 @@ export default function EventDetailScreen() {
             <Text style={s.error}>{error}</Text>
           ) : event ? (
             <>
-              <BackHeader fallback="/(admin)" />
               <Text style={s.screenTitle}>{event.nombre}</Text>
               <View style={s.goldRule} />
+              <BackHeader fallback="/(admin)" />
 
               <View style={s.card}>
                 <View style={badge(event.estado).pill}>
@@ -195,34 +206,42 @@ export default function EventDetailScreen() {
                 <View style={s.card}>
                   <Text style={s.sectionTitle}>Cierre del evento</Text>
                   <Text style={s.meta}>
-                    Genera el archivo Excel del cierre (3 hojas protegidas contra edición)
-                    o el PDF de solo lectura.
+                    Genera el PDF del cierre en solo lectura: no se puede editar ni
+                    copiar, solo imprimir.
                   </Text>
                   {cierreError ? <Text style={s.error}>{cierreError}</Text> : null}
                   <Pressable
                     disabled={busyCierre}
-                    onPress={handleCierre}
+                    onPress={handleCierrePdf}
                     style={({ pressed }) => [
                       s.primaryButton,
                       { opacity: busyCierre || pressed ? 0.7 : 1 },
                     ]}>
                     {busyCierre ? (
-                      <ActivityIndicator color={p.primary} />
+                      <ActivityIndicator color={p.onPrimary} />
                     ) : (
-                      <Text style={s.primaryButtonText}>Generar archivo de cierre</Text>
+                      <Text style={s.primaryButtonText}>Generar PDF de cierre</Text>
                     )}
                   </Pressable>
+
+                  <Text style={s.sectionTitle}>Meta</Text>
+                  <Text style={s.meta}>
+                    Envía lo recaudado por este evento a la Meta del comité. Si ya
+                    se envió, no se duplica.
+                  </Text>
+                  {metaMsg ? <Text style={s.smallBold}>{metaMsg}</Text> : null}
+                  {metaError ? <Text style={s.error}>{metaError}</Text> : null}
                   <Pressable
-                    disabled={busyCierre}
-                    onPress={handleCierrePdf}
+                    disabled={busyMeta}
+                    onPress={handleEnviarMeta}
                     style={({ pressed }) => [
                       s.secondaryButton,
-                      { opacity: busyCierre || pressed ? 0.7 : 1 },
+                      { opacity: busyMeta || pressed ? 0.7 : 1 },
                     ]}>
-                    {busyCierre ? (
+                    {busyMeta ? (
                       <ActivityIndicator color={p.primary} />
                     ) : (
-                      <Text style={s.secondaryButtonText}>Compartir PDF (solo lectura)</Text>
+                      <Text style={s.secondaryButtonText}>Enviar a Meta</Text>
                     )}
                   </Pressable>
                 </View>

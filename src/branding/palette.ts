@@ -1,8 +1,12 @@
 /**
- * Paleta de interfaz: base elegante en neutros (negro/blanco/gris) + acentos
- * del comité. Los colores del admin (primary/secondary/background) son
- * intocables por el usuario: solo cambian botones principales, títulos,
- * reglas y selecciones. El usuario solo elige claro/oscuro/automático.
+ * Paleta de interfaz.
+ *
+ * MONARQ (producto) es la identidad base/fallback: sus tokens oficiales viven
+ * en `MONARQ`, la fuente única. El brand del comité (primary/secondary/
+ * background) es una identidad SECUNDARIA configurable e independiente: solo
+ * pinta acentos, reglas y títulos del cliente.
+ *
+ * El usuario solo elige claro/oscuro/automático.
  */
 
 export type BrandInput = {
@@ -39,14 +43,50 @@ export type UIPalette = {
   dark: boolean;
 };
 
-/** Base neutra elegante: se usa sin comité (antes del registro). */
+/**
+ * MONARQ — identidad cromática oficial del producto (FUENTE ÚNICA).
+ * Dirección: sofisticada, oscura, tecnológica, limpia, sobria, premium.
+ */
+export const MONARQ = {
+  /** Fondo de pantalla (carbón oscuro). */
+  background: "#141311",
+  /** Fondo de tarjetas/inputs/modales. */
+  surface: "#1F1E1B",
+  /** Bordes (marfil muy tenue). Solo color: nunca se pasa a un parser hex. */
+  border: "rgba(247,246,242,0.08)",
+  /** Borde con doble de intensidad (pills, controles destacados). */
+  borderStrong: "rgba(247,246,242,0.16)",
+  /** Texto principal y títulos (marfil). */
+  textPrimary: "#F7F6F2",
+  /** Texto secundario y detalles (gris). */
+  textSecondary: "#8C8A85",
+  /** Acento del producto (taupe): reglas, puntos de tab, iconos de acento). */
+  accent: "#A08F7A",
+  /** Tinta sobre el acento (luminancia del taupe > 0.5 → tinta oscura). */
+  onAccent: "#141311",
+  /** Blanco puro. */
+  white: "#FFFFFF",
+  /** Punto verde: estado activo (para pantallas de estado). */
+  statusActive: "#5BAA7A",
+  /** Punto rojo: estado finalizado (para pantallas de estado). */
+  statusEnded: "#C1594F",
+} as const;
+
+export type MonarqIdentity = typeof MONARQ;
+
+/**
+ * Marca por defecto del producto (fallback sin comité) en la forma que
+ * entiende `buildPalette`. Deriva de MONARQ: no duplica valores.
+ * El brand del comité sigue viniendo de `Committee.color_*`.
+ */
 export const NEUTRAL_BRAND: BrandInput = {
-  primary: "#111111",
-  secondary: "#6B7280",
-  background: "#FFFFFF",
+  primary: MONARQ.accent,
+  secondary: MONARQ.textSecondary,
+  background: MONARQ.background,
 };
 
-const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+/** Formato de color aceptado en toda la app (#RRGGBB). Fuente única. */
+export const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
 function clampChannel(v: string, fallback: string): string {
   return HEX_RE.test(v) ? v.toUpperCase() : fallback;
@@ -77,19 +117,27 @@ export function mix(a: string, b: string, t: number): string {
   return rgbToHex(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t);
 }
 
-/** Blanco o negro según luminancia, para texto sobre el color del admin. */
-export function readableOn(hex: string): string {
+function luminance(hex: string): number {
   const [r, g, b] = hexToRgb(hex);
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.6 ? "#111111" : "#FFFFFF";
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+/**
+ * Tinta sobre `hex`: tinta MONARQ o blanco puro según luminancia.
+ * Umbral 0.5: el punto de cruce WCAG texto-claro/texto-oscuro está en
+ * luminancia perceptual ~0.47-0.5. Con 0.6 se leía blanco puro sobre
+ * matices medios (p. ej. `success`/`danger` en oscuro: 2.7:1 y 1.6:1).
+ */
+export function readableOn(hex: string): string {
+  return luminance(hex) > 0.5 ? MONARQ.onAccent : MONARQ.white;
 }
 
 export function buildPalette(brandInput: BrandInput, scheme: Scheme): UIPalette {
   const brand = sanitizeBrand(brandInput);
   const dark = scheme === "dark";
   if (dark) {
-    const background = "#0E0E10";
-    const surface = "#17171A";
+    const background = MONARQ.background;
+    const surface = MONARQ.surface;
     return {
       primary: brand.primary,
       onPrimary: readableOn(brand.primary),
@@ -97,10 +145,10 @@ export function buildPalette(brandInput: BrandInput, scheme: Scheme): UIPalette 
       background,
       surface,
       secondaryBg: mix(brand.secondary, surface, 0.72),
-      border: "#2E2E33",
-      title: "#F4F4F5",
-      text: "#F4F4F5",
-      textSoft: "#A7A7AE",
+      border: MONARQ.border,
+      title: MONARQ.textPrimary,
+      text: MONARQ.textPrimary,
+      textSoft: MONARQ.textSecondary,
       success: "#7BA88B",
       danger: "#D08A94",
       rule: brand.secondary,
@@ -108,17 +156,24 @@ export function buildPalette(brandInput: BrandInput, scheme: Scheme): UIPalette 
       dark: true,
     };
   }
+  const background = brand.background;
+  /**
+   * Fondo claro → tinta oscura (mismo resultado histórico). Fondo oscuro →
+   * tinta clara y superficies MONARQ: antes salían texto oscuro sobre fondo
+   * oscuro (ilegible).
+   */
+  const lightBackground = luminance(background) > 0.6;
   return {
     primary: brand.primary,
     onPrimary: readableOn(brand.primary),
     accent: brand.secondary,
-    background: brand.background,
-    surface: "#FFFFFF",
-    secondaryBg: mix(brand.secondary, brand.background, 0.86),
-    border: mix(brand.primary, brand.background, 0.25),
-    title: brand.primary,
-    text: "#141414",
-    textSoft: "#6E6E73",
+    background,
+    surface: lightBackground ? MONARQ.white : MONARQ.surface,
+    secondaryBg: mix(brand.secondary, background, 0.86),
+    border: mix(brand.primary, background, 0.25),
+    title: lightBackground ? brand.primary : MONARQ.textPrimary,
+    text: lightBackground ? "#141414" : MONARQ.textPrimary,
+    textSoft: lightBackground ? "#6E6E73" : MONARQ.textSecondary,
     success: "#58745D",
     danger: "#A94452",
     rule: brand.secondary,
@@ -127,5 +182,8 @@ export function buildPalette(brandInput: BrandInput, scheme: Scheme): UIPalette 
   };
 }
 
-/** Paleta clara neutra para renders estáticos (sin comité/sin sesión). */
+/**
+ * Paleta del fallback MONARQ en esquema claro (renders estáticos sin comité
+ * o sin sesión). Conserva el nombre público por compatibilidad.
+ */
 export const NEUTRAL_LIGHT = buildPalette(NEUTRAL_BRAND, "light");

@@ -28,7 +28,7 @@ import {
   type GroupRow,
   type ReportFilters,
 } from "@/features/reports/api";
-import { exportReportPdf, exportReportXlsx } from "@/features/reports/xlsx";
+import { exportReportPdf } from "@/features/reports/pdfExport";
 import {
   formatFolio,
   METODOS_PAGO,
@@ -111,7 +111,7 @@ export default function ReporteScreen() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ReportFilters>(EMPTY_FILTERS);
   const [dateField, setDateField] = useState<DateField>(null);
-  const [exporting, setExporting] = useState<"csv" | "pdf" | null>(null);
+  const [exporting, setExporting] = useState<"pdf" | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -192,20 +192,6 @@ export default function ReporteScreen() {
 
   const [modalDate, setModalDate] = useState(new Date());
 
-  async function handleExportCsv() {
-    if (exporting) return;
-    setExporting("csv");
-    setExportError(null);
-    try {
-      const now = new Date();
-      await exportReportXlsx(filtered, reportMeta(now));
-    } catch (e) {
-      setExportError((e as Error).message);
-    } finally {
-      setExporting(null);
-    }
-  }
-
   function reportMeta(now: Date) {
     const periodo =
       filters.desde || filters.hasta
@@ -249,7 +235,9 @@ export default function ReporteScreen() {
           <BackHeader fallback="/(admin)" />
 
           {loading ? (
-            <ActivityIndicator color={p.primary} />
+            <View style={s.center}>
+              <ActivityIndicator color={p.primary} />
+            </View>
           ) : error ? (
             <View style={{ gap: 8 }}>
               <Text style={s.error}>{error}</Text>
@@ -351,7 +339,7 @@ export default function ReporteScreen() {
                     }>
                     <View style={s.card}>
                       <View style={s.row}>
-                        <Text style={[s.smallBold, { flex: 1 }]}>{formatFolio(item.folio)}</Text>
+                        <Text style={[s.smallBold, { flex: 1 }]}>{formatFolio(item.folio, item.evento?.codigo ?? "")}</Text>
                         <View style={badge.pill}>
                           <Text style={badge.text}>{TICKET_ESTADO_LABEL[item.estado]}</Text>
                         </View>
@@ -372,18 +360,10 @@ export default function ReporteScreen() {
                 <View style={{ gap: 8, paddingTop: 8 }}>
                   {exportError ? <Text style={s.error}>{exportError}</Text> : null}
                   <Pressable
-                    onPress={handleExportCsv}
-                    disabled={exporting !== null}
-                    style={({ pressed }) => [s.secondaryButton, { opacity: exporting !== null || pressed ? 0.6 : 1 }]}>
-                    <Text style={s.secondaryButtonText}>
-                      {exporting === "csv" ? "Exportando…" : "Exportar Excel"}
-                    </Text>
-                  </Pressable>
-                  <Pressable
                     onPress={handleExportPdf}
                     disabled={exporting !== null}
-                    style={({ pressed }) => [s.secondaryButton, { opacity: exporting !== null || pressed ? 0.6 : 1 }]}>
-                    <Text style={s.secondaryButtonText}>
+                    style={({ pressed }) => [s.primaryButton, { opacity: exporting !== null || pressed ? 0.7 : 1 }]}>
+                    <Text style={s.primaryButtonText}>
                       {exporting === "pdf" ? "Generando…" : "Generar PDF"}
                     </Text>
                   </Pressable>
@@ -415,7 +395,7 @@ export default function ReporteScreen() {
                 <View style={s.row}>
                   <Pressable
                     onPress={() => setDateField(null)}
-                    style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+                    style={({ pressed }) => [s.secondaryButton, { paddingVertical: 16, opacity: pressed ? 0.7 : 1 }]}>
                     <Text style={s.secondaryButtonText}>Cancelar</Text>
                   </Pressable>
                   <Pressable

@@ -61,23 +61,17 @@ export const Spacing = {
   six: 64,
 } as const;
 
+/**
+ * Familias tipográficas de MONARQ: la fuente vive en `constants/type.ts`
+ * (módulo sin dependencias). Se re-exporta aquí para no romper a los que ya
+ * importan `Type` desde `@/constants/theme`.
+ */
+export { Type } from "./type";
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
 
 /**
- * Paleta por defecto: wine/borgoña sobre cream, estética editorial cálida.
- * Se usa como base antes del registro del comité; tras el registro cada
- * comité aplica sus propios colores (ver useBrandColors / committees).
+ * La identidad visual vive en `@/branding/palette`: MONARQ es la fuente única
+ * y el comité aporta su brand configurable. Aquí no hay colores de marca.
  */
-export const C22 = {
-  wine: "#8B263D",
-  accent: "#C96872",
-  cream: "#F7EFE3",
-  softPink: "#F1D9DC",
-  ink: "#3A2928",
-  gold: "#B9965A",
-  success: "#58745D",
-  danger: "#A94452",
-  creamLight: "#FDF8EE",
-  inkSoft: "#7A6563",
-} as const;

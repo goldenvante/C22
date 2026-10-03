@@ -14,15 +14,24 @@ function FaseLine({ fase }: { fase: string | null }) {
  * Tarjeta de resultado de validación (escáner y lista de puerta).
  * Códigos EXACTOS de la RPC: no inventar otros.
  */
-export function ResultCard({ result, eventName }: { result: ValidateResult; eventName: string | null }) {
+export function ResultCard({
+  result,
+  eventName,
+  eventCode,
+}: {
+  result: ValidateResult;
+  eventName: string | null;
+  /** Código corto del evento del control: forma el prefijo del folio. */
+  eventCode: string;
+}) {
   const { s, p } = useEventStyles();
   switch (result.code) {
     case "VALIDO":
       return (
         <View style={s.card}>
           <Text style={[s.sectionTitle, { color: p.success }]}>✓ ACCESO VÁLIDO</Text>
-          <Text style={[s.screenTitle, { fontSize: 36 }]}>
-            {result.folio !== null ? formatFolio(result.folio) : "—"}
+          <Text style={s.folio}>
+            {result.folio !== null ? formatFolio(result.folio, eventCode) : "—"}
           </Text>
           {eventName ? <Text style={s.body}>{eventName}</Text> : null}
           <FaseLine fase={result.fase} />
@@ -33,9 +42,9 @@ export function ResultCard({ result, eventName }: { result: ValidateResult; even
     case "YA_UTILIZADO":
       return (
         <View style={s.card}>
-          <Text style={[s.sectionTitle, { color: p.primary }]}>⚠ BOLETO YA UTILIZADO</Text>
-          <Text style={[s.screenTitle, { fontSize: 36 }]}>
-            {result.folio !== null ? formatFolio(result.folio) : "—"}
+          <Text style={[s.sectionTitle, { color: p.primary }]}>△ BOLETO YA UTILIZADO</Text>
+          <Text style={s.folio}>
+            {result.folio !== null ? formatFolio(result.folio, eventCode) : "—"}
           </Text>
           <FaseLine fase={result.fase} />
           <Text style={s.meta}>Este boleto ya registró su entrada.</Text>
@@ -45,8 +54,8 @@ export function ResultCard({ result, eventName }: { result: ValidateResult; even
       return (
         <View style={s.card}>
           <Text style={[s.sectionTitle, { color: p.danger }]}>✕ BOLETO CANCELADO</Text>
-          <Text style={[s.screenTitle, { fontSize: 36 }]}>
-            {result.folio !== null ? formatFolio(result.folio) : "—"}
+          <Text style={s.folio}>
+            {result.folio !== null ? formatFolio(result.folio, eventCode) : "—"}
           </Text>
           <FaseLine fase={result.fase} />
           <Text style={s.meta}>Este boleto fue cancelado y no permite entrada.</Text>
@@ -57,7 +66,7 @@ export function ResultCard({ result, eventName }: { result: ValidateResult; even
         <View style={s.card}>
           <Text style={[s.sectionTitle, { color: p.danger }]}>✕ BOLETO DE OTRO EVENTO</Text>
           {result.folio !== null ? (
-            <Text style={[s.screenTitle, { fontSize: 36 }]}>{formatFolio(result.folio)}</Text>
+            <Text style={s.folio}>{formatFolio(result.folio, eventCode)}</Text>
           ) : null}
           <FaseLine fase={result.fase} />
           <Text style={s.meta}>Este boleto no pertenece al evento del control.</Text>

@@ -1,6 +1,7 @@
 import type { TextStyle, ViewStyle } from "react-native";
 
-import { C22 } from "@/constants/theme";
+import { MONARQ, readableOn } from "@/branding/palette";
+import { Type } from "@/constants/type";
 
 export type MetodoPago = "EFECTIVO" | "TRANSFERENCIA" | "OTRO";
 
@@ -55,9 +56,16 @@ export type SaleTicket = {  id: string;
   vendedor: { nombre: string; usuario: string } | null;
 };
 
-/** Folio entero por evento -> formato visible FM-0001. Solo presentación. */
-export function formatFolio(folio: number): string {
-  return `FM-${String(folio).padStart(4, "0")}`;
+/**
+ * Folio entero por evento -> formato visible {CODIGO}-{NNN}, p. ej. HALL26-001.
+ * Solo presentación: el prefijo es `events.codigo` (único global) para que dos
+ * eventos no compartan folio legible. `codigo` va obligatorio a propósito, para
+ * que el compilador obligue a todo llamador a traerlo.
+ */
+export function formatFolio(folio: number, codigo: string): string {
+  const prefijo = codigo.trim().toUpperCase();
+  const numero = String(folio).padStart(3, "0");
+  return prefijo ? `${prefijo}-${numero}` : numero;
 }
 
 /** Vigencia de fase en cliente (el RPC revalida con fecha de servidor). */
@@ -77,24 +85,29 @@ const badgeBase: ViewStyle = {
   borderWidth: 1,
 };
 
-/** Pastilla de estado del ticket: sólido legible sobre cream. */
+/** Tintes semánticos fijos de estado (independientes del esquema claro/oscuro). */
+const STATE = {
+  OK: "#58745D",
+  BAD: "#A94452",
+  ACTIVO: MONARQ.accent,
+} as const;
+
+/**
+ * Pastilla de estado del ticket: fondo sólido con tinta derivada por
+ * `readableOn`, igual que el resto de badges de la app.
+ */
 export function ticketBadge(estado: TicketEstado): Badge {
+  const solid = (bg: string): Badge => ({
+    pill: { ...badgeBase, backgroundColor: bg, borderColor: bg },
+    text: { fontSize: 13, fontFamily: Type.bodyBold, color: readableOn(bg) },
+  });
   switch (estado) {
     case "UTILIZADO":
-      return {
-        pill: { ...badgeBase, backgroundColor: C22.success, borderColor: C22.success },
-        text: { fontSize: 13, fontWeight: "700", color: C22.cream },
-      };
+      return solid(STATE.OK);
     case "CANCELADO":
-      return {
-        pill: { ...badgeBase, backgroundColor: C22.danger, borderColor: C22.danger },
-        text: { fontSize: 13, fontWeight: "700", color: C22.cream },
-      };
+      return solid(STATE.BAD);
     case "ACTIVO":
     default:
-      return {
-        pill: { ...badgeBase, backgroundColor: C22.wine, borderColor: C22.wine },
-        text: { fontSize: 13, fontWeight: "700", color: C22.cream },
-      };
+      return solid(STATE.ACTIVO);
   }
 }

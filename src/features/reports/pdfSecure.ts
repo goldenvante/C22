@@ -15,12 +15,25 @@ export type PdfTable = {
   rows: string[][];
   /** Índices de columnas numéricas (alineadas a la derecha). */
   numericCols?: number[];
+  /** Anchos relativos por columna (mismos índices que `head`); normalizados. */
+  colFracs?: number[];
+  /** Índices de filas en negrita (totales). */
+  strongRows?: number[];
+};
+
+export type PdfKpi = {
+  label: string;
+  value: string;
+  /** Línea secundaria opcional bajo el valor. */
+  sub?: string;
 };
 
 export type PdfDoc = {
   title: string;
   meta: string[];
   tables: PdfTable[];
+  /** Destacado grande entre los metadatos y la primera tabla. */
+  kpi?: PdfKpi;
 };
 
 // ---------------------------------------------------------------- MD5 ----
@@ -197,9 +210,10 @@ export function deriveSecurity(ownerPassword: string, randomBytes: Uint8Array): 
   const paddedOwner = latin1Bytes(ownerPassword, 32);
   const ownerKey = md5Bytes(paddedOwner).slice(0, 5);
   const oEntry = rc4(ownerKey, paddedUser);
-  // P: bits 7,8,13-32 en 1; bit 3 (imprimir) y 12 (alta calidad) en 1.
+  // P: bits 7,8,13-32 en 1; bit 3 (imprimir) y 12 (alta calidad) en 1;
+  // bits 1-2 reservados, la especificación exige que estén en 1.
   // Modificar/copiar/anotar/formularios/ensamblar: denegados.
-  const permissions = (0xfffff000 | 0xc0 | 0x04 | 0x800) | 0;
+  const permissions = (0xfffff000 | 0xc0 | 0x04 | 0x800 | 0x03) | 0;
   const fileId = randomBytes.slice(0, 16);
   const fileKey = md5Bytes(concat(paddedUser, oEntry, le32(permissions), fileId)).slice(0, 5);
   const uEntry = rc4(fileKey, Uint8Array.from(PAD_BYTES));
@@ -209,10 +223,16 @@ export function deriveSecurity(ownerPassword: string, randomBytes: Uint8Array): 
   return { fileKey, oEntry, uEntry, permissions, fileIdHex };
 }
 
+/**
+ * Clave por objeto: MD5(fileKey + nº de objeto (3 B LE) + generación (2 B LE)),
+ * tomando `min(n + 5, 16)` bytes (§7.6.3). OJO: con RC4-40 son **10** bytes,
+ * no 5: usar solo `n` deja el stream cifrado con una clave distinta a la del
+ * lector y la página sale EN BLANCO.
+ */
 export function objectKey(fileKey: Uint8Array, objNum: number): Uint8Array {
   return md5Bytes(
     concat(fileKey, new Uint8Array([objNum & 0xff, (objNum >> 8) & 0xff, (objNum >> 16) & 0xff, 0, 0])),
-  ).slice(0, 5);
+  ).slice(0, Math.min(fileKey.length + 5, 16));
 }
 
 // ------------------------------------------------------------- PDF -------
@@ -233,6 +253,7 @@ const GOLD = [0.725, 0.588, 0.353];
 const INK = [0.227, 0.161, 0.157];
 const GRAY = [0.48, 0.396, 0.388];
 const LIGHT_LINE = [0.85, 0.82, 0.8];
+const KPI_BG = [0.973, 0.949, 0.957];
 
 function f3(n: number): string {
   return (Math.round(n * 1000) / 1000).toString();
@@ -240,17 +261,17 @@ function f3(n: number): string {
 
 /** Sanitiza a Latin-1 (WinAnsi): lo no representable se vuelve "?". */
 export function sanitizePdfText(s: string): string {
-  return s
-    .replace(/[—–]/g, "-")
-    .replace(/…/g, "...")
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/·/g, "-")
-    .replace(/[^\x09\x0a\x0d\x20-\xff]/g, "?");
-}
-
-function escStr(s: string): string {
-  return sanitizePdfText(s).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  return (
+    s
+      // Espacios invisibles/no-partibles (Intl produce U+202F en "11:23 p.m."):
+      // sin esto salen "?" en el PDF.
+      .replace(/[\s\u00a0\u202f]+/g, " ")
+      .replace(/[‐‑‒–—―]/g, "-")
+      .replace(/…/g, "...")
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .replace(/[^\x09\x0a\x0d\x20-\xff]/g, "?")
+  );
 }
 
 type Op =
@@ -258,18 +279,69 @@ type Op =
   | { k: "line"; x1: number; y1: number; x2: number; y2: number; color: number[]; width: number }
   | { k: "text"; x: number; y: number; size: number; bold: boolean; color: number[]; text: string; align?: "left" | "center" | "right"; maxWidth?: number };
 
-function textWidthApprox(text: string, size: number, bold: boolean): number {
-  // Ancho medio ~0.55em (0.6 en negrita). Suficiente para truncar, no para justificar.
-  return text.length * size * (bold ? 0.6 : 0.55);
+// ---------------------------------------------------------- métricas ----
+// Anchos AFM de Helvetica y Helvetica-Bold (unidades 1/1000) para 0x20..0x7E.
+// Con una aproximación uniforme (0,55 em) las cifras de distinto largo no
+// compartían borde derecho y las columnas quedaban disparejas.
+const W_REG =
+  "278278355556556889667191333333389584278333278278" +
+  "556556556556556556556556556556" +
+  "2782785845845845561015" +
+  "667667722722667611778722278500667556833722778667778722667611722667944667667611" +
+  "278278278469556333" +
+  "556556500556556278556556222222500222833556556556556333500278556500722500500500" +
+  "334260334584";
+const W_BOLD =
+  "278333474556556889722238333333389584278333278278" +
+  "556556556556556556556556556556" +
+  "333333584584584611975" +
+  "722722722722667611778722278556722611833722778667778722667611722667944667667611" +
+  "333278333584556333" +
+  "556611556611556333611611278278556278889611611611611389556333611556778556556500" +
+  "389280389584";
+
+function parseWidths(s: string): Uint16Array {
+  const out = new Uint16Array(95);
+  for (let i = 0; i < 95; i++) out[i] = Number(s.slice(i * 3, i * 3 + 3));
+  return out;
+}
+const HELV = parseWidths(W_REG);
+const HELV_B = parseWidths(W_BOLD);
+
+/** Letras acentuadas -> letra base (desvío < 0,6 pt a 9 pt). */
+const BASE_LATIN1 = new Map<number, number>();
+function agruparAnchos(from: string, to: string): void {
+  for (let i = 0; i < from.length; i++) BASE_LATIN1.set(from.charCodeAt(i), to.charCodeAt(i));
+}
+agruparAnchos("ÀÁÂÃÄÅàáâãäå", "AAAAAAaaaaaa");
+agruparAnchos("ÈÉÊËèéêë", "EEEEeeee");
+agruparAnchos("ÌÍÎÏìíîï", "IIIIiiii");
+agruparAnchos("ÒÓÔÕÖòóôõö", "OOOOOooooo");
+agruparAnchos("ÙÚÛÜùúûü", "UUUUuuuu");
+agruparAnchos("ÑñÇçÝýÿÐðØøÆæ", "NnCcYyyDdOoAa");
+
+function charWidthUnit(code: number, bold: boolean): number {
+  if (code >= 0x20 && code <= 0x7e) return (bold ? HELV_B : HELV)[code - 0x20];
+  const base = BASE_LATIN1.get(code);
+  if (base !== undefined && base >= 0x20 && base <= 0x7e) return (bold ? HELV_B : HELV)[base - 0x20];
+  return 556;
+}
+
+/** Ancho exacto del texto en puntos. */
+export function textWidth(text: string, size: number, bold: boolean): number {
+  let units = 0;
+  for (let i = 0; i < text.length; i++) units += charWidthUnit(text.charCodeAt(i), bold);
+  return (units / 1000) * size;
 }
 
 function fitText(text: string, size: number, bold: boolean, maxWidth: number): string {
-  if (textWidthApprox(text, size, bold) <= maxWidth) return text;
+  if (textWidth(text, size, bold) <= maxWidth) return text;
   let t = text;
-  while (t.length > 1 && textWidthApprox(t + "…", size, bold) > maxWidth) {
+  // El texto ya está saneado: "…" ya no existe, se trunca con puntos.
+  while (t.length > 1 && textWidth(`${t}...`, size, bold) > maxWidth) {
     t = t.slice(0, -1);
   }
-  return t + "…";
+  return `${t}...`;
 }
 
 type BuiltPage = { ops: Op[] };
@@ -301,14 +373,15 @@ function renderOps(ops: Op[]): Uint8Array {
     } else {
       const [r, g, b] = op.color;
       const font = op.bold ? "/F2" : "/F1";
-      let text = op.text;
+      // Se sanea ANTES de medir: los anchos deben corresponder a los bytes que
+      // realmente se escriben ("…" pasa a "...", U+202F a espacio).
+      let text = sanitizePdfText(op.text);
       let x = op.x;
       if (op.align === "center" || op.align === "right") {
-        const w = textWidthApprox(text, op.size, op.bold);
         // Sin maxWidth no hay referencia para alinear: se usa el texto tal cual.
-        const max = op.maxWidth ?? w;
-        if (w > max) text = fitText(text, op.size, op.bold, max);
-        const w2 = textWidthApprox(text, op.size, op.bold);
+        const max = op.maxWidth ?? textWidth(text, op.size, op.bold);
+        text = fitText(text, op.size, op.bold, max);
+        const w2 = textWidth(text, op.size, op.bold);
         x = op.align === "center" ? x + (max - w2) / 2 : x + (max - w2);
       } else if (op.maxWidth !== undefined) {
         text = fitText(text, op.size, op.bold, op.maxWidth);
@@ -316,7 +389,7 @@ function renderOps(ops: Op[]): Uint8Array {
       // Tm = matriz absoluta (Td acumularía offsets relativos y sacaría
       // todo de la página → PDF en blanco). Coordenadas absolutas siempre.
       pushStr(`BT ${font} ${op.size} Tf ${f3(r)} ${f3(g)} ${f3(b)} rg 1 0 0 1 ${f3(x)} ${f3(op.y)} Tm `);
-      const eb = plainStr(escStr(text));
+      const eb = plainStr(text);
       for (let i = 0; i < eb.length; i++) parts.push(eb[i]);
       pushStr(` Tj ET\n`);
     }
@@ -324,10 +397,11 @@ function renderOps(ops: Op[]): Uint8Array {
   return Uint8Array.from(parts);
 }
 
-type TableModel = { title?: string; head: string[]; rows: string[][]; numericCols?: number[] };
+/** Franja muy tenue para el efecto cebra de las filas. */
+const ZEBRA = [0.976, 0.965, 0.969];
 
 function layoutTable(
-  table: TableModel,
+  table: PdfTable,
   pages: Op[][],
   startY: number[],
   dims: Dims,
@@ -336,7 +410,8 @@ function layoutTable(
   const { margin, contentW, pageH } = dims;
   const n = table.head.length;
   const numeric = new Set(table.numericCols ?? []);
-  const fracs = table.head.map((_, i) => (numeric.has(i) ? 0.8 : 1));
+  const strong = new Set(table.strongRows ?? []);
+  const fracs = table.colFracs ?? table.head.map((_, i) => (numeric.has(i) ? 0.8 : 1));
   const totalFrac = fracs.reduce((a, b) => a + b, 0);
   const widths = fracs.map((f) => ((contentW - colGap * (n - 1)) * f) / totalFrac);
   const xPos: number[] = [];
@@ -348,11 +423,17 @@ function layoutTable(
   const rowH = 17;
   const headH = 20;
   const needHeader = () => {
-    pages[pages.length - 1].push({ k: "rect", x: margin, y: startY[0] - headH + 5, w: contentW, h: headH, fill: WINE });
+    const yTop = startY[0] - headH + 5;
+    pages[pages.length - 1].push({ k: "rect", x: margin, y: yTop, w: contentW, h: headH, fill: WINE });
+    // Línea base a `capHeight/2` del centro de la barra: centrado exacto.
+    const yBase = yTop + headH / 2 - 3.2;
     table.head.forEach((h, i) => {
       pages[pages.length - 1].push({
-        k: "text", x: xPos[i] + 4, y: startY[0] - headH + 10,
+        k: "text", x: xPos[i] + 4, y: yBase,
         size: 9, bold: true, color: [1, 1, 1], text: h, maxWidth: widths[i] - 8,
+        // La cabecera debe alinearse COMO sus celdas: si no, los números
+        // quedan descolocados respecto a su rótulo ("disparejos").
+        align: numeric.has(i) ? "right" : "left",
       });
     });
     startY[0] -= headH;
@@ -365,23 +446,36 @@ function layoutTable(
     }
     return false;
   };
+  // Cabecera huérfana: si no caben rótulo + barra + UNA fila, se brinca de
+  // página ANTES de dibujar nada (sino queda el título y la barra solos al
+  // pie de una página y la tabla empieza en la siguiente).
+  const primerReserva = (table.title ? 26 : 0) + headH + (table.rows.length > 0 ? rowH : 0);
+  if (startY[0] - primerReserva < margin) {
+    pages.push([]);
+    startY[0] = pageH - margin;
+  }
   if (table.title) {
-    if (ensure(24)) {
-      // título al inicio de página nueva
-    }
     pages[pages.length - 1].push({
       k: "text", x: margin, y: startY[0] - 15, size: 13, bold: true, color: WINE, text: table.title,
     });
-    startY[0] -= 22;
+    // Deja aire real entre el rótulo y la barra (con 22 se veían pegados).
+    startY[0] -= 26;
   }
   ensure(headH);
   needHeader();
-  for (const row of table.rows) {
+  for (let r = 0; r < table.rows.length; r++) {
+    const row = table.rows[r];
     if (ensure(rowH)) needHeader();
+    if (r % 2 === 1) {
+      pages[pages.length - 1].push({
+        k: "rect", x: margin, y: startY[0] - rowH, w: contentW, h: rowH, fill: ZEBRA,
+      });
+    }
+    const isStrong = strong.has(r);
     row.forEach((cell, i) => {
       pages[pages.length - 1].push({
-        k: "text", x: xPos[i] + 4, y: startY[0] - rowH + 6,
-        size: 9, bold: false, color: INK, text: cell,
+        k: "text", x: xPos[i] + 4, y: startY[0] - rowH / 2 - 3.2,
+        size: 9, bold: isStrong, color: isStrong ? WINE : INK, text: cell,
         align: numeric.has(i) ? "right" : "left", maxWidth: widths[i] - 8,
       });
     });
@@ -396,7 +490,7 @@ function layoutTable(
 
 /** Arma el PDF cifrado. Devuelve los bytes del archivo. */
 export function buildLockedPdf(
-  doc: { title: string; meta: string[]; tables: TableModel[] },
+  doc: PdfDoc,
   ownerPassword: string,
   randomBytes: Uint8Array,
   landscape = false,
@@ -423,6 +517,31 @@ export function buildLockedPdf(
     y[0] -= 14;
   }
   y[0] -= 6;
+
+  // Cifra destacada: caja pálida con filo dorado a la izquierda.
+  if (doc.kpi) {
+    const h = doc.kpi.sub ? 66 : 54;
+    newPageIfNeeded(h + 14);
+    const top = y[0];
+    put({ k: "rect", x: margin, y: top - h, w: contentW, h, fill: KPI_BG });
+    put({ k: "rect", x: margin, y: top - h, w: 4, h, fill: GOLD });
+    put({
+      k: "text", x: margin + 18, y: top - 19, size: 9, bold: true, color: GRAY,
+      text: doc.kpi.label, maxWidth: contentW - 36,
+    });
+    put({
+      k: "text", x: margin + 18, y: top - 45, size: 24, bold: true, color: WINE,
+      text: doc.kpi.value, maxWidth: contentW - 36,
+    });
+    if (doc.kpi.sub) {
+      put({
+        k: "text", x: margin + 18, y: top - 58, size: 9, bold: false, color: GRAY,
+        text: doc.kpi.sub, maxWidth: contentW - 36,
+      });
+    }
+    y[0] = top - h - 14;
+  }
+
   for (const t of doc.tables) layoutTable(t, pages, y, dims);
 
   // Pies de página (ya se conoce el total).
@@ -468,11 +587,11 @@ export function buildLockedPdf(
   }
   objs.push({
     num: idFont,
-    body: raw(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>`),
+    body: raw(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`),
   });
   objs.push({
     num: idFontBold,
-    body: raw(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>`),
+    body: raw(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`),
   });
   pages.forEach((ops, i) => {
     objs.push({ num: idFirstContent + i, body: new Uint8Array(0), stream: renderOps(ops) });

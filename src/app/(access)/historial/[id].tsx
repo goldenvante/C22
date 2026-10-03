@@ -81,6 +81,7 @@ export default function AccesoDetalleScreen() {
         evento: bundle.evento
           ? {
               nombre: bundle.evento.nombre,
+              codigo: scan?.evento?.codigo ?? "",
               fecha: bundle.evento.fecha,
               hora: bundle.evento.hora,
               lugar: bundle.evento.lugar,

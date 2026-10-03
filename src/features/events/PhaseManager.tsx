@@ -282,7 +282,7 @@ export function PhaseManager({ eventId }: { eventId: string }) {
             <View style={s.row}>
               <Pressable
                 onPress={() => setPicker(null)}
-                style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+                style={({ pressed }) => [s.secondaryButton, { paddingVertical: 16, opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={s.secondaryButtonText}>Cancelar</Text>
               </Pressable>
               <Pressable

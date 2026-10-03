@@ -27,6 +27,7 @@ export default function ListaPuertaScreen() {
   const { s, p } = useEventStyles();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const [eventName, setEventName] = useState<string | null>(null);
+  const [eventCode, setEventCode] = useState("");
   const [tickets, setTickets] = useState<GuestTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,6 +49,7 @@ export default function ListaPuertaScreen() {
       setTickets(await listGuestlist(eventId));
       const ev = await getEvent(eventId).catch(() => null);
       setEventName(ev?.nombre ?? null);
+      setEventCode(ev?.codigo ?? "");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -69,9 +71,9 @@ export default function ListaPuertaScreen() {
       (t) =>
         t.comprador.toLowerCase().includes(q) ||
         String(t.folio).includes(q) ||
-        formatFolio(t.folio).toLowerCase().includes(q),
+        formatFolio(t.folio, eventCode).toLowerCase().includes(q),
     );
-  }, [tickets, query]);
+  }, [tickets, query, eventCode]);
 
   function pick(ticket: GuestTicket) {
     setSelected(ticket);
@@ -130,13 +132,14 @@ export default function ListaPuertaScreen() {
             value={query}
             onChangeText={(v) => setQuery(v)}
             placeholder="Buscar por nombre o folio…"
+            placeholderTextColor={p.textSoft}
             style={s.input}
           />
 
           {selected && !result ? (
             <View style={s.card}>
               <Text style={[s.smallBold, { fontSize: 24 }]}>{selected.comprador}</Text>
-              <Text style={[s.screenTitle, { fontSize: 30 }]}>{formatFolio(selected.folio)}</Text>
+              <Text style={s.folio}>{formatFolio(selected.folio, eventCode)}</Text>
               <Text style={s.meta}>
                 {selected.fase ?? "Sin fase"}
                 {selected.esCortesia ? " · Cortesía" : ""} ·{" "}
@@ -157,7 +160,7 @@ export default function ListaPuertaScreen() {
               {selected.estado !== "ACTIVO" ? (
                 <Text style={s.error}>Este boleto no está activo y no permite entrada.</Text>
               ) : null}
-              <Pressable onPress={handleNext} style={s.linkWrap}>
+              <Pressable onPress={handleNext} style={({ pressed }) => [s.linkWrap, { opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={s.link}>Elegir otro boleto</Text>
               </Pressable>
             </View>
@@ -165,7 +168,7 @@ export default function ListaPuertaScreen() {
 
           {result ? (
             <View style={{ gap: 8 }}>
-              <ResultCard result={result} eventName={eventName} />
+              <ResultCard result={result} eventName={eventName} eventCode={eventCode} />
               <Pressable
                 onPress={handleNext}
                 style={({ pressed }) => [s.primaryButton, { opacity: pressed ? 0.7 : 1 }]}>
@@ -175,7 +178,9 @@ export default function ListaPuertaScreen() {
           ) : null}
 
           {loading ? (
-            <ActivityIndicator color={p.primary} />
+            <View style={s.center}>
+              <ActivityIndicator color={p.primary} />
+            </View>
           ) : error && tickets.length === 0 ? (
             <View style={{ gap: 8 }}>
               <Text style={s.error}>{error}</Text>
@@ -204,7 +209,7 @@ export default function ListaPuertaScreen() {
               }
               ListEmptyComponent={
                 <Text style={s.meta}>
-                  {tickets.length === 0 ? "Sin boletos para este evento." : "Sin resultados para esa búsqueda."}
+                  {tickets.length === 0 ? "Aún no hay boletos para este evento." : "Sin resultados para esa búsqueda."}
                 </Text>
               }
               renderItem={({ item }) => {
@@ -219,7 +224,7 @@ export default function ListaPuertaScreen() {
                       { opacity: pressed ? 0.7 : 1 },
                     ]}>
                     <View style={s.row}>
-                      <Text style={[s.smallBold, { flex: 1 }]}>{formatFolio(item.folio)}</Text>
+                      <Text style={[s.smallBold, { flex: 1 }]}>{formatFolio(item.folio, eventCode)}</Text>
                       <View style={badge.pill}>
                         <Text style={badge.text}>{TICKET_ESTADO_LABEL[item.estado]}</Text>
                       </View>

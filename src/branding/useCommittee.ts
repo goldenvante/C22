@@ -2,26 +2,17 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/auth/AuthProvider";
 import { supabase, type Committee } from "@/lib/supabase";
+import { HEX_RE, NEUTRAL_BRAND } from "./palette";
 
-/** Paleta por defecto: neutra elegante. El color llega con el comité del admin. */
-export const DEFAULT_BRAND = {
-  primary: "#111111",
-  secondary: "#6B7280",
-  background: "#FFFFFF",
-} as const;
+// Re-export: la fuente única vive en palette.ts (mismo valor y API pública).
+export { HEX_RE };
 
-export const COLOR_PRESETS = [
-  "#111111",
-  "#6B7280",
-  "#FFFFFF",
-  "#8B263D",
-  "#1D4ED8",
-  "#047857",
-  "#7C3AED",
-  "#B45309",
-] as const;
-
-export const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+/**
+ * Fallback del producto (sin comité). Deriva de NEUTRAL_BRAND, que a su vez
+ * deriva de MONARQ (palette.ts): MONARQ = identidad base; committee brand =
+ * identidad configurable del cliente.
+ */
+export const DEFAULT_BRAND = { ...NEUTRAL_BRAND };
 
 export function normalizeHex(raw: string): string | null {
   const v = raw.trim();

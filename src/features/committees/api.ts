@@ -1,8 +1,8 @@
+import { HEX_RE } from "@/branding/palette";
 import { supabase, type Committee } from "@/lib/supabase";
 
 export const COMMITTEE_LOGO_BUCKET = "committee-logos";
 
-const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 const USUARIO_RE = /^[a-z0-9._-]{3,32}$/;
 
 export type SignupCommitteeInput = {
@@ -10,7 +10,7 @@ export type SignupCommitteeInput = {
   colorPrimario: string;
   colorSecundario: string;
   colorFondo: string;
-  /** URL pública del logo (opcional; se sube antes con uploadCommitteeLogo). */
+  /** URL pública del logo; en el registro llega como null y se sube con uploadCommitteeLogo tras iniciar sesión. */
   logoUrl?: string | null;
   usuario: string;
   nombre: string;
@@ -137,9 +137,9 @@ const LOGO_EXT: Record<string, string> = {
 
 /**
  * Sube el icono del comité al bucket público y devuelve la URL pública.
- * Se usa ANTES del signup (sin sesión): el path incluye un id temporal, y
- * tras crear el comité el logoUrl queda guardado en committees.logo_url.
- * Con sesión de admin también sirve para cambiar el icono después.
+ * Requiere sesión de admin (storage exige is_active_member). `scope` es la
+ * carpeta destino: el committeeId en el registro, o el committeeId al
+ * cambiar el icono desde Configuración. La URL se guarda con updateCommittee.
  */
 export async function uploadCommitteeLogo(
   localUri: string,

@@ -17,7 +17,10 @@ import { supabase } from "@/lib/supabase";
 const MIN_LEN = 8;
 
 function friendlyUpdateError(message: string): string {
-  if (/same|different|actual|actualizar/i.test(message) && /password|contraseña/i.test(message)) {
+  if (
+    /same|different|actual|actualizar/i.test(message) &&
+    /password|contraseña/i.test(message)
+  ) {
     return "La nueva contraseña debe ser diferente a la temporal.";
   }
   if (/weak|short|length|caracter/i.test(message)) {
@@ -59,7 +62,9 @@ export default function CambiarPasswordScreen() {
     // Si Supabase la rechaza por igual, se mapea el error arriba.
     setBusy(true);
     try {
-      const { error: passError } = await supabase.auth.updateUser({ password: nueva });
+      const { error: passError } = await supabase.auth.updateUser({
+        password: nueva,
+      });
       if (passError) {
         setError(friendlyUpdateError(passError.message));
         return;
@@ -72,7 +77,10 @@ export default function CambiarPasswordScreen() {
         return;
       }
       const { data, error: getError } = await supabase.auth.getUser();
-      if (getError || data.user?.user_metadata?.debe_cambiar_password === true) {
+      if (
+        getError ||
+        data.user?.user_metadata?.debe_cambiar_password === true
+      ) {
         setError("No se pudo confirmar el cambio. Inténtalo de nuevo.");
         return;
       }
@@ -99,11 +107,13 @@ export default function CambiarPasswordScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={[s.scroll, { flex: 1, justifyContent: "center" }]}>
+          style={[s.scroll, { flex: 1, justifyContent: "center" }]}
+        >
           <Text style={s.screenTitle}>Crea tu nueva contraseña</Text>
           <View style={s.goldRule} />
           <Text style={s.meta}>
-            Usas una contraseña temporal. Cámbiala ahora para continuar a tu inicio.
+            Usas una contraseña temporal. Cámbiala ahora para continuar a tu
+            inicio.
           </Text>
 
           <Text style={s.label}>Nueva contraseña</Text>
@@ -138,7 +148,11 @@ export default function CambiarPasswordScreen() {
           <Pressable
             onPress={onSubmit}
             disabled={busy}
-            style={({ pressed }) => [s.primaryButton, { opacity: busy || pressed ? 0.7 : 1 }]}>
+            style={({ pressed }) => [
+              s.primaryButton,
+              { opacity: busy || pressed ? 0.7 : 1 },
+            ]}
+          >
             {busy ? (
               <ActivityIndicator color={p.onPrimary} />
             ) : (
@@ -146,7 +160,14 @@ export default function CambiarPasswordScreen() {
             )}
           </Pressable>
 
-          <Pressable onPress={signOut} disabled={busy} style={s.linkWrap}>
+          <Pressable
+            onPress={signOut}
+            disabled={busy}
+            style={({ pressed }) => [
+              s.linkWrap,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
             <Text style={s.link}>Cerrar sesión</Text>
           </Pressable>
         </KeyboardAvoidingView>

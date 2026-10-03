@@ -618,8 +618,58 @@ grant execute on function public.get_entry_ticket(uuid) to authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 7. Retiro de la columna rol (reemplazada por roles[])
+-- Las políticas de Storage creadas para el bucket `eventos`
+-- (eventos_admin_insert/update/delete) dependen de profiles.rol y bloquean
+-- el DROP. Se eliminan antes y se recrean con is_admin() (que ya usa roles[]).
 -- ----------------------------------------------------------------------------
+DO $$ BEGIN
+  IF to_regclass('storage.objects') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS "eventos_admin_insert" ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS "eventos_admin_update" ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS "eventos_admin_delete" ON storage.objects';
+  END IF;
+END $$;
+
 alter table public.profiles drop column if exists rol;
+
+DO $$ BEGIN
+  IF to_regclass('storage.objects') IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'storage' AND tablename = 'objects'
+        AND policyname = 'eventos_admin_insert'
+    ) THEN
+      EXECUTE $pol$
+        CREATE POLICY "eventos_admin_insert"
+          ON storage.objects FOR INSERT TO authenticated
+          WITH CHECK (bucket_id = 'eventos' AND public.is_admin())
+      $pol$;
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'storage' AND tablename = 'objects'
+        AND policyname = 'eventos_admin_update'
+    ) THEN
+      EXECUTE $pol$
+        CREATE POLICY "eventos_admin_update"
+          ON storage.objects FOR UPDATE TO authenticated
+          USING (bucket_id = 'eventos' AND public.is_admin())
+          WITH CHECK (bucket_id = 'eventos' AND public.is_admin())
+      $pol$;
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'storage' AND tablename = 'objects'
+        AND policyname = 'eventos_admin_delete'
+    ) THEN
+      EXECUTE $pol$
+        CREATE POLICY "eventos_admin_delete"
+          ON storage.objects FOR DELETE TO authenticated
+          USING (bucket_id = 'eventos' AND public.is_admin())
+      $pol$;
+    END IF;
+  END IF;
+END $$;
 
 -- ----------------------------------------------------------------------------
 -- 8. Grants

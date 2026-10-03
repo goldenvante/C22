@@ -795,26 +795,38 @@ grant execute on function public.get_entry_ticket(uuid) to authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 7. Storage: bucket de logos del comité (lectura pública, escritura admin)
+-- NOTA: storage.* solo existe en proyectos Supabase con Storage provisionado.
+-- Se envuelve en bloque defensivo para que `db push` no falle si el esquema
+-- storage aún no existe (ej. DB local sin storage). El bucket también puede
+-- crearse desde Dashboard > Storage > New bucket: `committee-logos` (public).
 -- ----------------------------------------------------------------------------
-insert into storage.buckets (id, name, public)
-values ('committee-logos', 'committee-logos', true)
-on conflict (id) do nothing;
+DO $$ BEGIN
+  IF to_regclass('storage.buckets') IS NOT NULL THEN
+    INSERT INTO storage.buckets (id, name, public)
+    VALUES ('committee-logos', 'committee-logos', true)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;
 
-drop policy if exists "logos_public_read" on storage.objects;
-create policy "logos_public_read"
-  on storage.objects for select to public
-  using (bucket_id = 'committee-logos');
+DO $$ BEGIN
+  IF to_regclass('storage.objects') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "logos_public_read" ON storage.objects;
+    CREATE POLICY "logos_public_read"
+      ON storage.objects FOR SELECT TO public
+      USING (bucket_id = 'committee-logos');
 
-drop policy if exists "logos_member_write" on storage.objects;
-create policy "logos_member_write"
-  on storage.objects for insert to authenticated
-  with check (bucket_id = 'committee-logos' and public.is_active_member());
+    DROP POLICY IF EXISTS "logos_member_write" ON storage.objects;
+    CREATE POLICY "logos_member_write"
+      ON storage.objects FOR INSERT TO authenticated
+      WITH CHECK (bucket_id = 'committee-logos' AND public.is_active_member());
 
-drop policy if exists "logos_member_update" on storage.objects;
-create policy "logos_member_update"
-  on storage.objects for update to authenticated
-  using (bucket_id = 'committee-logos' and public.is_admin())
-  with check (bucket_id = 'committee-logos' and public.is_admin());
+    DROP POLICY IF EXISTS "logos_member_update" ON storage.objects;
+    CREATE POLICY "logos_member_update"
+      ON storage.objects FOR UPDATE TO authenticated
+      USING (bucket_id = 'committee-logos' AND public.is_admin())
+      WITH CHECK (bucket_id = 'committee-logos' AND public.is_admin());
+  END IF;
+END $$;
 
 -- ----------------------------------------------------------------------------
 -- 8. Grants mínimos

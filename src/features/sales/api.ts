@@ -1,12 +1,7 @@
 import { supabase } from "@/lib/supabase";
-import {
-  toFechaKey,
-  type EventItem,
-  type EventPhase,
-} from "@/features/events/types";
+import { type EventItem, type EventPhase } from "@/features/events/types";
 
 import {
-  faseVigente,
   METODOS_PAGO,
   type MetodoPago,
   type NewSaleInput,
@@ -88,31 +83,32 @@ function toSale(row: Record<string, unknown>): SaleTicket {
 const SALE_SELECT =
   "*, events(nombre,codigo,fecha,hora,lugar,imagen_url,mapas_url), event_phases(nombre), profiles(nombre,usuario)";
 
-/** Eventos disponibles para vender: publicados, ordenados por fecha. */
-export async function listSellableEvents(): Promise<EventItem[]> {
-  const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("estado", "publicado")
-    .order("fecha", { ascending: true });
+/**
+ * Eventos disponibles para vender, ordenados por fecha. Con `admin` se listan
+ * los del comité sin filtrar por estado (el RPC ya exime al admin); sin él,
+ * solo publicados.
+ */
+export async function listSellableEvents(admin = false): Promise<EventItem[]> {
+  let query = supabase.from("events").select("*");
+  if (!admin) query = query.eq("estado", "publicado");
+  const { data, error } = await query.order("fecha", { ascending: true });
   if (error) throw new Error(error.message || "No se pudieron cargar los eventos.");
   return (data ?? []) as EventItem[];
 }
 
 /**
- * Fases ofrecibles: activas y dentro de vigencia (filtro UI; el RPC revalida
- * con fecha de servidor). Tolera fases antiguas sin fechas.
+ * Fases del evento en orden. Se devuelven todas (activas e inactivas, dentro o
+ * fuera de vigencia) para que el selector las pinte y las bloqueadas muestren
+ * el motivo; quien decide es el RPC, que revalida con fecha de servidor.
  */
 export async function listSellablePhases(eventId: string): Promise<EventPhase[]> {
   const { data, error } = await supabase
     .from("event_phases")
     .select("*")
     .eq("event_id", eventId)
-    .eq("activa", true)
     .order("orden", { ascending: true });
   if (error) throw new Error(error.message || "No se pudieron cargar las fases.");
-  const hoy = toFechaKey(new Date());
-  return ((data ?? []) as EventPhase[]).filter((f) => faseVigente(f.fecha_inicio, f.fecha_fin, hoy));
+  return (data ?? []) as EventPhase[];
 }
 
 /** Crea la venta vía RPC: folio, snapshot y seller los pone el backend. */

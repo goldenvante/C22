@@ -19,6 +19,7 @@ export default function EscanearScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const [permission, requestPermission] = useCameraPermissions();
   const [eventName, setEventName] = useState<string | null>(null);
+  const [eventCode, setEventCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ValidateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +30,14 @@ export default function EscanearScreen() {
   useEffect(() => {
     if (!eventId) return;
     getEvent(eventId)
-      .then((ev) => setEventName(ev?.nombre ?? null))
-      .catch(() => setEventName(null));
+      .then((ev) => {
+        setEventName(ev?.nombre ?? null);
+        setEventCode(ev?.codigo ?? "");
+      })
+      .catch(() => {
+        setEventName(null);
+        setEventCode("");
+      });
   }, [eventId]);
 
   async function handleScan(scan: BarcodeScanningResult) {
@@ -110,7 +117,7 @@ export default function EscanearScreen() {
           </Text>
 
           {scanning ? (
-            <View style={[s.card, { padding: 0, overflow: "hidden" }]}>
+            <View style={[s.card, { padding: 0, overflow: "hidden", maxWidth: 480, alignSelf: "center" }]}>
               <CameraView
                 style={{ width: "100%", aspectRatio: 1 }}
                 facing="back"
@@ -124,7 +131,7 @@ export default function EscanearScreen() {
             </View>
           ) : null}
 
-          {result ? <ResultCard result={result} eventName={eventName} /> : null}
+          {result ? <ResultCard result={result} eventName={eventName} eventCode={eventCode} /> : null}
           {error && !result ? <Text style={s.error}>{error}</Text> : null}
 
           {!scanning ? (

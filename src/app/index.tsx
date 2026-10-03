@@ -4,17 +4,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Text,
   TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 import { useAuth } from "@/auth/AuthProvider";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { MaxContentWidth, Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
+import { MaxContentWidth, Spacing, Type } from "@/constants/theme";
+import { useEventStyles } from "@/features/events/eventStyles";
 import { loginEmailForUsuario, supabase } from "@/lib/supabase";
 
 function friendlyAuthError(message: string): string {
@@ -34,7 +35,7 @@ function friendlyAuthError(message: string): string {
 }
 
 export default function LoginScreen() {
-  const theme = useTheme();
+  const { s, p } = useEventStyles();
   const { session, profile, loading: authLoading, notice, clearNotice, signOut, requiresPasswordChange } = useAuth();
   const [usuario, setUsuario] = useState("");
   const [password, setPassword] = useState("");
@@ -72,144 +73,124 @@ export default function LoginScreen() {
   // loader aquí también para no mostrar el formulario ni el enlace de salida.
   if (authLoading || (session && (profile || requiresPasswordChange))) {
     return (
-      <ThemedView style={styles.center}>
-        <ActivityIndicator />
-      </ThemedView>
+      <View style={s.center}>
+        <ActivityIndicator color={p.primary} />
+      </View>
     );
   }
 
   const message = error ?? notice;
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+    <View style={s.screen}>
+      <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.form}>
-          <ThemedText type="title" style={styles.title}>
-            Gestión de eventos
-          </ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-            Inicia sesión con tu usuario
-          </ThemedText>
+          style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.content}>
+              {/* Marca del producto */}
+              <View style={styles.brand}>
+                <Text style={[styles.wordmark, { color: p.title }]}>MONARQ</Text>
+                <View style={s.goldRule} />
+                <Text style={s.meta}>Gestión de eventos, boletos y accesos</Text>
+              </View>
 
-          <ThemedText type="smallBold">Usuario</ThemedText>
-          <TextInput
-            value={usuario}
-            onChangeText={setUsuario}
-            placeholder="p. ej. admin.sanjuan"
-            placeholderTextColor={theme.textSecondary}
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!busy}
-            onSubmitEditing={onSubmit}
-            style={[
-              styles.input,
-              { color: theme.text, borderColor: theme.textSecondary, backgroundColor: theme.backgroundElement },
-            ]}
-          />
+              <View style={[s.card, styles.card]}>
+                <Text style={s.sectionTitle}>Inicia sesión</Text>
+                <Text style={s.meta}>Ingresa con tu usuario</Text>
 
-          <ThemedText type="smallBold">Contraseña</ThemedText>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Tu contraseña"
-            placeholderTextColor={theme.textSecondary}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!busy}
-            onSubmitEditing={onSubmit}
-            style={[
-              styles.input,
-              { color: theme.text, borderColor: theme.textSecondary, backgroundColor: theme.backgroundElement },
-            ]}
-          />
+                <Text style={s.label}>Usuario</Text>
+                <TextInput
+                  value={usuario}
+                  onChangeText={setUsuario}
+                  placeholder="Tu usuario"
+                  placeholderTextColor={p.textSoft}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!busy}
+                  onSubmitEditing={onSubmit}
+                  style={s.input}
+                />
 
-          {message ? (
-            <ThemedText type="small" style={styles.error}>
-              {message}
-            </ThemedText>
-          ) : null}
+                <Text style={s.label}>Contraseña</Text>
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Tu contraseña"
+                  placeholderTextColor={p.textSoft}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!busy}
+                  onSubmitEditing={onSubmit}
+                  style={s.input}
+                />
 
-          <Pressable
-            onPress={onSubmit}
-            disabled={busy}
-            style={({ pressed }) => [
-              styles.button,
-              { backgroundColor: theme.text, opacity: busy || pressed ? 0.7 : 1 },
-            ]}>
-            {busy ? (
-              <ActivityIndicator color={theme.background} />
-            ) : (
-              <ThemedText type="smallBold" style={{ color: theme.background }}>
-                Iniciar sesión
-              </ThemedText>
-            )}
-          </Pressable>
+                {message ? <Text style={s.error}>{message}</Text> : null}
 
-          {session && !profile && !requiresPasswordChange ? (
-            <Pressable onPress={signOut} style={styles.linkButton}>
-              <ThemedText type="link">Usar otra cuenta</ThemedText>
-            </Pressable>
-          ) : null}
+                <Pressable
+                  onPress={onSubmit}
+                  disabled={busy}
+                  style={({ pressed }) => [
+                    s.primaryButton,
+                    { opacity: busy || pressed ? 0.7 : 1 },
+                  ]}>
+                  {busy ? (
+                    <ActivityIndicator color={p.onPrimary} />
+                  ) : (
+                    <Text style={s.primaryButtonText}>Iniciar sesión</Text>
+                  )}
+                </Pressable>
 
-          {!session ? (
-            <Pressable onPress={() => router.push("/setup")} style={styles.linkButton}>
-              <ThemedText type="link">¿Nuevo comité? Regístralo aquí</ThemedText>
-            </Pressable>
-          ) : null}
+                {session && !profile && !requiresPasswordChange ? (
+                  <Pressable onPress={signOut} style={({ pressed }) => [s.linkWrap, { opacity: pressed ? 0.7 : 1 }]}>
+                    <Text style={s.link}>Usar otra cuenta</Text>
+                  </Pressable>
+                ) : null}
+
+                {!session ? (
+                  <Pressable onPress={() => router.push("/setup")} style={({ pressed }) => [s.linkWrap, { opacity: pressed ? 0.7 : 1 }]}>
+                    <Text style={s.link}>¿Nuevo comité? Regístralo aquí</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
+  scroll: {
+    flexGrow: 1,
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "center",
+    padding: Spacing.three,
   },
-  container: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  safeArea: {
-    flex: 1,
+  content: {
+    width: "100%",
     maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    justifyContent: "center",
+    gap: Spacing.four,
   },
-  form: {
+  brand: {
+    alignItems: "center",
     gap: Spacing.two,
   },
-  title: {
+  wordmark: {
+    fontSize: 34,
+    fontFamily: Type.display,
+    letterSpacing: 6,
     textAlign: "center",
   },
-  subtitle: {
-    textAlign: "center",
-    marginBottom: Spacing.three,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-  },
-  error: {
-    color: "#D64545",
-  },
-  button: {
-    marginTop: Spacing.two,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: "center",
-  },
-  linkButton: {
-    alignItems: "center",
-    paddingVertical: Spacing.two,
+  card: {
+    gap: Spacing.three,
+    padding: Spacing.four,
+    borderRadius: 16,
   },
 });

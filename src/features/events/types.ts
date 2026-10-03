@@ -72,6 +72,10 @@ export function formatHora(hora: string | null): string {
   return hora.slice(0, 5);
 }
 
+/** Dinero con millares ($12,345.00). Única fuente de formato monetario. */
 export function formatPrecio(precio: number): string {
-  return `$${Number(precio).toFixed(2)}`;
+  const v = Math.round(Number(precio) * 100) / 100;
+  const [entero, dec] = Math.abs(v).toFixed(2).split(".");
+  const miles = entero.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${v < 0 ? "-" : ""}$${miles}.${dec}`;
 }

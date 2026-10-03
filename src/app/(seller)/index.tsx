@@ -1,72 +1,54 @@
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useState } from "react";
 import { router } from "expo-router";
 
 import { useAuth } from "@/auth/AuthProvider";
-import { ThemeSelector } from "@/branding/ThemeSelector";
-import { useEventStyles } from "@/features/events/eventStyles";
+import { useCommittee } from "@/branding/useCommittee";
+import { EventPickerModal } from "@/features/events/EventPickerModal";
+import { HomeScreen, type HomeCard } from "@/components/nav/HomeScreen";
 import { hasRole } from "@/lib/supabase";
 
+/**
+ * Inicio (vendedor): sus ventanas cambian con el rol. Con access también,
+ * se añade Escanear (que pide el evento en el selector modal, porque esa
+ * ruta exige eventId y la app no guarda un evento activo).
+ */
 export default function SellerHome() {
-  const { s, p } = useEventStyles();
-  const { profile, loading, signOut } = useAuth();
+  const { profile, loading } = useAuth();
+  const { committee } = useCommittee();
+  const [pending, setPending] = useState(false);
+
   const isAccess = hasRole(profile, "access");
 
-  if (loading) {
-    return (
-      <View style={s.center}>
-        <ActivityIndicator color={p.primary} />
-      </View>
-    );
-  }
+  const cards: HomeCard[] = [
+    { key: "nueva-venta", label: "Nueva venta", icon: "sale", href: "/(seller)/nueva-venta" },
+    { key: "boletos", label: "Boletos", icon: "ticket", href: "/(seller)/boletos" },
+    { key: "eventos", label: "Eventos", icon: "calendar", href: "/(seller)/events" },
+    { key: "meta", label: "Meta", icon: "target", href: "/(seller)/ahorro" },
+    ...(isAccess
+      ? [
+          {
+            key: "escanear",
+            label: "Escanear",
+            icon: "scan" as const,
+            onPress: () => setPending(true),
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <View style={s.screen}>
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        <View style={s.scroll}>
-          <Text style={s.screenTitle}>Ventas</Text>
-          <View style={s.goldRule} />
-          <Text style={s.meta}>Hola, {profile?.nombre ?? profile?.usuario}.</Text>
-
-          <Pressable
-            onPress={() => router.push("/(seller)/nueva-venta")}
-            style={({ pressed }) => [s.primaryButton, { opacity: pressed ? 0.7 : 1 }]}>
-            <Text style={s.primaryButtonText}>+ Nueva venta</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push("/(seller)/ventas")}
-            style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
-            <Text style={s.secondaryButtonText}>Mis ventas</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push("/(seller)/cortesia")}
-            style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
-            <Text style={s.secondaryButtonText}>Boletos de cortesía</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push("/(seller)/ahorro")}
-            style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
-            <Text style={s.secondaryButtonText}>Ahorro</Text>
-          </Pressable>
-
-          {isAccess ? (
-            <Pressable
-              onPress={() => router.push("/(access)")}
-              style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
-              <Text style={s.secondaryButtonText}>Control de acceso</Text>
-            </Pressable>
-          ) : null}
-
-          <ThemeSelector />
-
-          <Pressable onPress={() => signOut()} style={s.linkWrap}>
-            <Text style={s.link}>Cerrar sesión</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    </View>
+    <HomeScreen
+      committee={committee?.nombre}
+      welcome={profile ? `Bienvenido, ${profile.nombre || profile.usuario}` : null}
+      loading={loading || !profile}
+      cards={cards}>
+      <EventPickerModal
+        visible={pending}
+        onClose={() => setPending(false)}
+        onSelect={(eventId) =>
+          router.push({ pathname: "/(access)/escanear", params: { eventId } })
+        }
+      />
+    </HomeScreen>
   );
 }

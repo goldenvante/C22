@@ -49,7 +49,9 @@ export default function HistorialScreen() {
           <BackHeader fallback="/(access)" />
 
           {loading ? (
-            <ActivityIndicator color={p.primary} />
+            <View style={s.center}>
+              <ActivityIndicator color={p.primary} />
+            </View>
           ) : error ? (
             <View style={{ gap: 8 }}>
               <Text style={s.error}>{error}</Text>
@@ -81,7 +83,7 @@ export default function HistorialScreen() {
                 />
               }
               ListEmptyComponent={
-                <Text style={s.meta}>Aún no has registrado accesos.</Text>
+                <Text style={s.meta}>Aún no hay accesos registrados.</Text>
               }
               renderItem={({ item }) => (
                 <Pressable

@@ -108,7 +108,9 @@ export default function CortesiasScreen() {
           </Text>
 
           {loading ? (
-            <ActivityIndicator color={p.primary} />
+            <View style={s.center}>
+              <ActivityIndicator color={p.primary} />
+            </View>
           ) : (
             <FlatList
               data={quotas}
@@ -116,27 +118,27 @@ export default function CortesiasScreen() {
               contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
               ListHeaderComponent={
-                <View style={[s.card, { gap: 4 }]}>
+                <View style={s.card}>
                   <Text style={s.sectionTitle}>Asignar cortesías</Text>
                   <Text style={s.label}>Vendedor</Text>
                   {sellers.length === 0 ? (
                     <Text style={s.meta}>Sin vendedores cargados.</Text>
                   ) : null}
                   <View style={{ gap: 8 }}>
-                    {sellers.map((p) => {
-                      const selected = p.id === sellerId;
+                    {sellers.map((seller) => {
+                      const selected = seller.id === sellerId;
                       return (
                         <Pressable
-                          key={p.id}
+                          key={seller.id}
                           disabled={busy}
-                          onPress={() => setSellerId(p.id)}
+                          onPress={() => setSellerId(seller.id)}
                           style={({ pressed }) => [
                             s.secondaryButton,
                             selected && { backgroundColor: p.primary, borderColor: p.primary },
                             { opacity: pressed || busy ? 0.7 : 1 },
                           ]}>
                           <Text style={[s.secondaryButtonText, selected && { color: p.onPrimary }]}>
-                            {p.nombre} · @{p.usuario}
+                            {seller.nombre} · @{seller.usuario}
                           </Text>
                         </Pressable>
                       );

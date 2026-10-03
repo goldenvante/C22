@@ -2,9 +2,17 @@ import { forwardRef } from "react";
 import { Text, useWindowDimensions, View } from "react-native";
 import { ImageBackground } from "expo-image";
 
-import { C22 } from "@/constants/theme";
+import { MONARQ, readableOn } from "@/branding/palette";
 import { TicketQr } from "@/features/sales/TicketQr";
 import { formatFolio, type TicketEstado } from "@/features/sales/types";
+
+/** Identidad MONARQ: negro profundo, tinta clara y acento dorado. */
+const ACCENT = MONARQ.accent;
+const INK_TEXT = MONARQ.textPrimary;
+const PAPER = MONARQ.white;
+const DANGER = "#A94452";
+const DANGER_INK = readableOn(DANGER);
+const ACCENT_INK = readableOn(ACCENT);
 
 /**
  * Datos mínimos para el boleto. SaleTicket es asignable (tiene estos campos
@@ -20,6 +28,7 @@ export type BoletoData = {
   qr_token: string;
   evento: {
     nombre: string;
+    codigo: string;
     fecha: string | null;
     hora: string | null;
     lugar: string | null;
@@ -97,26 +106,28 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
         borderRadius: 26,
         overflow: "hidden",
         borderWidth: 1,
-        borderColor: C22.gold,
-        backgroundColor: "#181014",
+        borderColor: ACCENT,
+        backgroundColor: MONARQ.background,
+        maxWidth: 420,
+        alignSelf: "center",
       }}>
       <ImageBackground
         source={sale.evento?.imagen_url ? { uri: sale.evento.imagen_url } : null}
         contentFit="cover"
-        style={{ width: "100%", aspectRatio: 9 / 15.5 }}>
-        <View style={{ flex: 1, backgroundColor: "rgba(14, 6, 9, 0.60)" }}>
+        style={{ width: "100%", aspectRatio: 9 / 16 }}>
+        <View style={{ flex: 1, backgroundColor: "rgba(11, 11, 13, 0.60)" }}>
           <View style={{ alignItems: "center", paddingTop: 26, paddingHorizontal: 24, gap: 6 }}>
-            <Text style={{ fontSize: 10, letterSpacing: 4, color: C22.gold, fontWeight: "700" }}>
+            <Text style={{ fontSize: 10, letterSpacing: 4, color: ACCENT, fontWeight: "700" }}>
               {header}
             </Text>
             <Text
               numberOfLines={3}
               ellipsizeMode="tail"
-              style={{ fontSize: 36, fontWeight: "800", color: C22.cream, textAlign: "center" }}>
+              style={{ fontSize: 36, fontWeight: "800", color: INK_TEXT, textAlign: "center" }}>
               {(sale.evento?.nombre ?? "Evento no disponible").toUpperCase()}
             </Text>
             {fecha ? (
-              <Text style={{ fontSize: 14, letterSpacing: 3, color: C22.cream, fontWeight: "600" }}>
+              <Text style={{ fontSize: 14, letterSpacing: 3, color: INK_TEXT, fontWeight: "600" }}>
                 {fecha}
               </Text>
             ) : null}
@@ -124,7 +135,7 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={{ fontSize: 12, letterSpacing: 2, color: C22.cream }}>
+                style={{ fontSize: 12, letterSpacing: 2, color: INK_TEXT }}>
                 {sale.evento.lugar.toUpperCase()}
               </Text>
             ) : null}
@@ -133,23 +144,23 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
           <View style={{ alignItems: "center", paddingVertical: 14 }}>
             <View style={{ padding: 14 }}>
               <Corner
-                style={{ top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderColor: C22.cream }}
+                style={{ top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderColor: INK_TEXT }}
               />
               <Corner
-                style={{ top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderColor: C22.cream }}
+                style={{ top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderColor: INK_TEXT }}
               />
               <Corner
-                style={{ bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: C22.cream }}
+                style={{ bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: INK_TEXT }}
               />
               <Corner
-                style={{ bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderColor: C22.cream }}
+                style={{ bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderColor: INK_TEXT }}
               />
-              <View style={{ backgroundColor: C22.creamLight, borderRadius: 8, padding: 12 }}>
+              <View style={{ backgroundColor: PAPER, borderRadius: 8, padding: 12 }}>
                 <TicketQr qrToken={sale.qr_token} size={qrSize} />
               </View>
             </View>
-            <Text style={{ fontSize: 17, letterSpacing: 4, color: C22.cream, fontWeight: "700", marginTop: 10 }}>
-              {formatFolio(sale.folio)}
+            <Text style={{ fontSize: 17, letterSpacing: 4, color: INK_TEXT, fontWeight: "700", marginTop: 10 }}>
+              {formatFolio(sale.folio, sale.evento?.codigo ?? "")}
             </Text>
           </View>
 
@@ -157,7 +168,7 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
             <Text
               numberOfLines={2}
               ellipsizeMode="tail"
-              style={{ fontSize: 22, fontWeight: "600", color: C22.cream, textAlign: "center" }}>
+              style={{ fontSize: 22, fontWeight: "600", color: INK_TEXT, textAlign: "center" }}>
               {sale.comprador_nombre}
             </Text>
             {cancelled ? (
@@ -165,8 +176,8 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
                 style={{
                   fontSize: 13,
                   fontWeight: "800",
-                  color: C22.cream,
-                  backgroundColor: C22.danger,
+                  color: DANGER_INK,
+                  backgroundColor: DANGER,
                   borderRadius: 999,
                   paddingVertical: 5,
                   paddingHorizontal: 16,
@@ -180,8 +191,8 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
                 style={{
                   fontSize: 13,
                   fontWeight: "800",
-                  color: C22.cream,
-                  backgroundColor: C22.wine,
+                  color: ACCENT_INK,
+                  backgroundColor: ACCENT,
                   borderRadius: 999,
                   paddingVertical: 5,
                   paddingHorizontal: 16,
@@ -198,7 +209,7 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
               marginHorizontal: 40,
               marginTop: 12,
               borderTopWidth: 1,
-              borderTopColor: "rgba(247, 239, 227, 0.35)",
+              borderTopColor: "rgba(244, 241, 234, 0.35)",
             }}
           />
 
@@ -207,19 +218,23 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
               <View style={{ flex: 1, gap: 8 }}>
                 {fechaLong || hora ? (
                   <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-                    <Text style={{ fontSize: 18, color: C22.cream }}>📅</Text>
+                    <Text style={{ fontSize: 10, letterSpacing: 2, color: ACCENT, fontWeight: "700" }}>
+                      FECHA
+                    </Text>
                     <View>
                       {fechaLong ? (
-                        <Text style={{ fontSize: 14, color: C22.cream }}>{fechaLong}</Text>
+                        <Text style={{ fontSize: 14, color: INK_TEXT }}>{fechaLong}</Text>
                       ) : null}
-                      {hora ? <Text style={{ fontSize: 14, color: C22.cream }}>{hora}</Text> : null}
+                      {hora ? <Text style={{ fontSize: 14, color: INK_TEXT }}>{hora}</Text> : null}
                     </View>
                   </View>
                 ) : null}
                 {sale.evento?.lugar ? (
                   <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-                    <Text style={{ fontSize: 18, color: C22.cream }}>📍</Text>
-                    <Text numberOfLines={2} ellipsizeMode="tail" style={{ fontSize: 14, color: C22.cream, flex: 1 }}>
+                    <Text style={{ fontSize: 10, letterSpacing: 2, color: ACCENT, fontWeight: "700" }}>
+                      LUGAR
+                    </Text>
+                    <Text numberOfLines={2} ellipsizeMode="tail" style={{ fontSize: 14, color: INK_TEXT, flex: 1 }}>
                       {sale.evento.lugar}
                     </Text>
                   </View>
@@ -230,12 +245,12 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
                   <TicketQr
                     qrToken={sale.evento.mapas_url}
                     size={84}
-                    color={C22.cream}
+                    color={INK_TEXT}
                     backgroundColor="transparent"
                     quietZone={6}
                     ecl="H"
                   />
-                  <Text style={{ fontSize: 8, letterSpacing: 1, color: C22.gold, fontWeight: "800" }}>
+                  <Text style={{ fontSize: 8, letterSpacing: 1, color: ACCENT, fontWeight: "800" }}>
                     CÓMO LLEGAR
                   </Text>
                 </View>
@@ -248,7 +263,7 @@ export const BoletoCard = forwardRef<View, { sale: BoletoData; committeeName?: s
               textAlign: "center",
               fontSize: 9,
               letterSpacing: 4,
-              color: "rgba(247, 239, 227, 0.6)",
+              color: "rgba(244, 241, 234, 0.6)",
               paddingBottom: 18,
             }}>
             {footer}

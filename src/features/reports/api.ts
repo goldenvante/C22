@@ -65,9 +65,8 @@ export function applyFilters(tickets: SaleTicket[], f: ReportFilters): SaleTicke
   });
 }
 
-const isVigente = (t: SaleTicket) => t.estado !== "CANCELADO";
-
-/** Resumen sobre filas YA filtradas. Cortesías suman $0 y se cuentan aparte. */
+/** Resumen sobre filas YA filtradas. Cortesías suman $0 y se cuentan aparte;
+ * los cancelados cuentan en dinero porque el esquema no guarda reembolsos. */
 export function computeSummary(rows: SaleTicket[]): ReportSummary {
   let vendidos = 0;
   let ingresos = 0;
@@ -75,11 +74,8 @@ export function computeSummary(rows: SaleTicket[]): ReportSummary {
   let utilizados = 0;
   let cancelados = 0;
   for (const t of rows) {
-    if (t.estado === "CANCELADO") {
-      cancelados += 1;
-      continue;
-    }
     vendidos += 1;
+    if (t.estado === "CANCELADO") cancelados += 1;
     if (t.es_cortesia) {
       cortesias += 1;
     } else {
@@ -93,7 +89,6 @@ export function computeSummary(rows: SaleTicket[]): ReportSummary {
 function groupSum(rows: SaleTicket[], keyOf: (t: SaleTicket) => { key: string; label: string }): GroupRow[] {
   const map = new Map<string, GroupRow>();
   for (const t of rows) {
-    if (!isVigente(t)) continue;
     const { key, label } = keyOf(t);
     const row = map.get(key) ?? { key, label, cantidad: 0, ingresos: 0 };
     row.cantidad += 1;

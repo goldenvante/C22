@@ -51,7 +51,7 @@ export default function AdminVentaDetalleScreen() {
     if (!sale) return;
     Alert.alert(
       "Cancelar venta",
-      `¿Cancelar el boleto ${formatFolio(sale.folio)} de ${sale.comprador_nombre}? El folio quedará consumido y no se reutilizará.`,
+      `¿Cancelar el boleto ${formatFolio(sale.folio, sale.evento?.codigo ?? "")} de ${sale.comprador_nombre}? El folio quedará consumido y no se reutilizará.`,
       [
         { text: "Volver", style: "cancel" },
         {
@@ -90,9 +90,9 @@ export default function AdminVentaDetalleScreen() {
             <Text style={s.error}>{error}</Text>
           ) : sale ? (
             <>
-              <BackHeader fallback="/(admin)/ventas" />
-              <Text style={[s.screenTitle, { fontSize: 40 }]}>{formatFolio(sale.folio)}</Text>
+              <Text style={s.folio}>{formatFolio(sale.folio, sale.evento?.codigo ?? "")}</Text>
               <View style={s.goldRule} />
+              <BackHeader fallback="/(admin)/ventas" />
               <View style={ticketBadge(sale.estado).pill}>
                 <Text style={ticketBadge(sale.estado).text}>
                   {TICKET_ESTADO_LABEL[sale.estado]}

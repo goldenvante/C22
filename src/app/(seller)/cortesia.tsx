@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 
+import { useAuth } from "@/auth/AuthProvider";
 import { BackHeader } from "@/components/back-header";
 import { useEventStyles } from "@/features/events/eventStyles";
 import { formatPrecio, type EventItem } from "@/features/events/types";
@@ -19,9 +20,12 @@ import {
   listSellableEvents,
 } from "@/features/sales/api";
 import { formatFolio, type SaleTicket } from "@/features/sales/types";
+import { hasRole } from "@/lib/supabase";
 
 export default function CortesiaScreen() {
   const { s, p } = useEventStyles();
+  const { profile } = useAuth();
+  const isAdmin = hasRole(profile, "admin");
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [eventId, setEventId] = useState("");
@@ -59,6 +63,9 @@ export default function CortesiaScreen() {
   }, [eventId]);
 
   const disponibles = quota ? Math.max(0, quota.asignadas - quota.usadas) : 0;
+  // La RPC create_courtesy_ticket no descuenta cupo al admin: sin esta
+  // excepción el botón quedaría muerto (el admin no tiene fila de cupo).
+  const sinCupo = !isAdmin && disponibles <= 0;
 
   async function handleSubmit() {
     if (!eventId || !nombre.trim()) {
@@ -92,7 +99,7 @@ export default function CortesiaScreen() {
           {created ? (
             <View style={s.card}>
               <Text style={s.sectionTitle}>Cortesía generada</Text>
-              <Text style={[s.screenTitle, { fontSize: 40 }]}>{formatFolio(created.folio)}</Text>
+              <Text style={s.folio}>{formatFolio(created.folio, created.evento?.codigo ?? "")}</Text>
               <Text style={s.body}>{created.comprador_nombre}</Text>
               <Text style={[s.smallBold, { color: p.primary }]}>CORTESÍA · $0.00</Text>
               <Pressable
@@ -107,7 +114,7 @@ export default function CortesiaScreen() {
                   setCreated(null);
                   setError(null);
                 }}
-                style={s.linkWrap}>
+                style={({ pressed }) => [s.linkWrap, { opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={s.link}>Generar otra cortesía</Text>
               </Pressable>
             </View>
@@ -143,7 +150,9 @@ export default function CortesiaScreen() {
 
               {eventId && quota ? (
                 <Text style={s.meta}>
-                  Cortesías disponibles: {disponibles} de {quota.asignadas}
+                  {isAdmin
+                    ? "Cortesías sin límite (administrador)."
+                    : `Cortesías disponibles: ${disponibles} de ${quota.asignadas}`}
                 </Text>
               ) : null}
 
@@ -174,10 +183,10 @@ export default function CortesiaScreen() {
 
               <Pressable
                 onPress={handleSubmit}
-                disabled={busy || !eventId || disponibles <= 0}
+                disabled={busy || !eventId || sinCupo}
                 style={({ pressed }) => [
                   s.primaryButton,
-                  { opacity: busy || !eventId || disponibles <= 0 || pressed ? 0.5 : 1 },
+                  { opacity: busy || !eventId || sinCupo || pressed ? 0.5 : 1 },
                 ]}>
                 {busy ? (
                   <ActivityIndicator color={p.onPrimary} />
