@@ -11,17 +11,20 @@ import {
 import { BackHeader } from "@/components/back-header";
 import { getEvent } from "@/features/events/api";
 import { useEventStyles } from "@/features/events/eventStyles";
-import { validateTicket, type ValidateResult } from "@/features/access/api";
+import { validateScan, type ScanResult } from "@/features/access/api";
 import { ResultCard } from "@/features/access/ResultCard";
+import { useConnectivity } from "@/offline/Connectivity";
+import { getOfflineEvent } from "@/offline/repo/events";
 
 export default function EscanearScreen() {
   const { s, p } = useEventStyles();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const { status } = useConnectivity();
   const [permission, requestPermission] = useCameraPermissions();
   const [eventName, setEventName] = useState<string | null>(null);
   const [eventCode, setEventCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<ValidateResult | null>(null);
+  const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Ref anti-doble: los callbacks nativos pueden llegar en ráfaga antes
   // de que el estado `busy` se confirme en un re-render.
@@ -29,15 +32,29 @@ export default function EscanearScreen() {
 
   useEffect(() => {
     if (!eventId) return;
+    let cancelled = false;
     getEvent(eventId)
       .then((ev) => {
+        if (cancelled) return;
         setEventName(ev?.nombre ?? null);
         setEventCode(ev?.codigo ?? "");
       })
-      .catch(() => {
-        setEventName(null);
-        setEventCode("");
-      });
+      .catch(() =>
+        getOfflineEvent(eventId)
+          .then((ev) => {
+            if (cancelled) return;
+            setEventName(ev?.nombre ?? null);
+            setEventCode(ev?.codigo ?? "");
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setEventName(null);
+            setEventCode("");
+          }),
+      );
+    return () => {
+      cancelled = true;
+    };
   }, [eventId]);
 
   async function handleScan(scan: BarcodeScanningResult) {
@@ -46,7 +63,7 @@ export default function EscanearScreen() {
     setBusy(true);
     setError(null);
     try {
-      setResult(await validateTicket(scan.data, eventId));
+      setResult(await validateScan(scan.data, eventId, status));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -116,6 +133,16 @@ export default function EscanearScreen() {
             {eventName ? `Evento: ${eventName}` : "Coloca el QR dentro del área."}
           </Text>
 
+          {status === "offline" ? (
+            <View style={s.card}>
+              <Text style={[s.sectionTitle, { color: p.primary }]}>MODO OFFLINE</Text>
+              <Text style={s.meta}>
+                Validación sin conexión: el resultado se guarda en este dispositivo y quedará
+                pendiente de sincronización.
+              </Text>
+            </View>
+          ) : null}
+
           {scanning ? (
             <View style={[s.card, { padding: 0, overflow: "hidden", maxWidth: 480, alignSelf: "center" }]}>
               <CameraView
@@ -132,6 +159,21 @@ export default function EscanearScreen() {
           ) : null}
 
           {result ? <ResultCard result={result} eventName={eventName} eventCode={eventCode} /> : null}
+
+          {result?.offline ? (
+            <View style={s.card}>
+              <Text style={[s.sectionTitle, { color: p.primary }]}>VALIDACIÓN OFFLINE</Text>
+              <Text style={s.meta}>
+                {result.ok
+                  ? "Entrada registrada localmente y pendiente de sincronización."
+                  : "Resultado registrado en este dispositivo."}
+              </Text>
+              {result.stale ? (
+                <Text style={s.error}>Sin sincronizar por más de 12 horas.</Text>
+              ) : null}
+            </View>
+          ) : null}
+
           {error && !result ? <Text style={s.error}>{error}</Text> : null}
 
           {!scanning ? (

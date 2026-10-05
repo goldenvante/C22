@@ -12,10 +12,9 @@ import type { SupabaseContext } from "npm:@supabase/server@^1";
 
 type AdminDb = SupabaseContext["supabaseAdmin"];
 
-const AUTH_EMAIL_DOMAIN = Deno.env.get("AUTH_EMAIL_DOMAIN") ?? "c22.internal";
-
 const USUARIO_RE = /^[a-z0-9._-]{3,32}$/;
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MIN_PASSWORD_LEN = 8;
 
 function json(status: number, data: unknown): Response {
@@ -91,6 +90,10 @@ export default {
     if (typeof body.password !== "string" || body.password.length < MIN_PASSWORD_LEN) {
       return fail(400, "INVALID_PASSWORD", `Contraseña inválida (mínimo ${MIN_PASSWORD_LEN} caracteres).`);
     }
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!EMAIL_RE.test(email) || email.length > 254) {
+      return fail(400, "INVALID_EMAIL", "Correo electrónico inválido.");
+    }
 
     try {
       if (await usuarioTaken(db, usuario)) {
@@ -118,7 +121,6 @@ export default {
     const committeeId = committee.id as string;
 
     // 2. Usuario Auth admin.
-    const email = `${usuario}@${AUTH_EMAIL_DOMAIN}`;
     const { data: created, error: createError } = await db.auth.admin.createUser({
       email,
       password: body.password as string,
@@ -128,8 +130,8 @@ export default {
     if (createError || !created.user) {
       await db.from("committees").delete().eq("id", committeeId);
       const msg = createError?.message ?? "unknown";
-      if (/already (been )?registered|already exists/i.test(msg)) {
-        return fail(409, "USUARIO_TAKEN", "El usuario ya existe.");
+      if (/already (been )?registered|already exists|email_exists/i.test(msg)) {
+        return fail(409, "EMAIL_TAKEN", "Ese correo ya está en uso por otra cuenta.");
       }
       return fail(500, "AUTH_CREATE_FAILED", `No se pudo crear el usuario: ${msg}`);
     }
@@ -156,6 +158,6 @@ export default {
     // 4. Vincular creador (best-effort, no bloquea el registro).
     await db.from("committees").update({ created_by: authId }).eq("id", committeeId);
 
-    return json(201, { ok: true, committeeId, id: authId, usuario, rol: "admin" });
+    return json(201, { ok: true, committeeId, id: authId, usuario, email, rol: "admin" });
   }),
 };

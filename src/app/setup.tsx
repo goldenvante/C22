@@ -18,7 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 
 import { MaxContentWidth, Spacing, Type } from "@/constants/theme";
 import { useEventStyles } from "@/features/events/eventStyles";
-import { loginEmailForUsuario, supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { normalizeHex } from "@/branding/useCommittee";
 import { NEUTRAL_BRAND, buildPalette, type UIPalette } from "@/branding/palette";
 import { useThemeChoice } from "@/branding/ThemeChoice";
@@ -104,6 +104,7 @@ export default function SetupScreen() {
   const [logoUri, setLogoUri] = useState<string | null>(null);
   const [logoMime, setLogoMime] = useState<string | null>(null);
   const [usuario, setUsuario] = useState("");
+  const [email, setEmail] = useState("");
   const [encargado, setEncargado] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -155,6 +156,11 @@ export default function SetupScreen() {
       setError("Usuario del admin inválido: 3-32 caracteres, minúsculas, números, punto, guion o guion bajo.");
       return;
     }
+    const mail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(mail) || mail.length > 254) {
+      setError("Escribe un correo electrónico válido. Se usará para recuperar tu contraseña.");
+      return;
+    }
     if (!encargado.trim()) {
       setError("Escribe el nombre de la persona encargada.");
       return;
@@ -178,13 +184,14 @@ export default function SetupScreen() {
           colorFondo: bColor,
           logoUrl: null,
           usuario: u,
+          email: mail,
           nombre: encargado.trim(),
           password,
         });
         createdRef.current = created;
       }
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: loginEmailForUsuario(created.usuario),
+        email: mail,
         password,
       });
       if (signInError) {
@@ -321,6 +328,19 @@ export default function SetupScreen() {
                 onChangeText={setUsuario}
                 placeholder="Ej. mi.usuario"
                 placeholderTextColor={p.textSoft}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!busy}
+                style={s.input}
+              />
+
+              <Text style={s.label}>Correo del admin</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Ej. hola@tudominio.com"
+                placeholderTextColor={p.textSoft}
+                keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!busy}

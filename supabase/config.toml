@@ -15,3 +15,8 @@ enabled = true
 # Registro público de comité + admin (pantalla inicial de la app).
 # Sin JWT: valida datos y crea comité + Auth + profile con service_role.
 verify_jwt = false
+
+[functions.admin-auth]
+enabled = true
+verify_jwt = false
+

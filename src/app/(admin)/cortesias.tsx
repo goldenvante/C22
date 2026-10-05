@@ -42,7 +42,7 @@ export default function CortesiasScreen() {
     // 08 aún no aplicada), los selectores de vendedor/evento siguen activos.
     try {
       const st = await listStaff();
-      setSellers(st.filter((p) => (p.roles ?? []).includes("seller")));
+      setSellers(st.filter((p) => p.activo !== false));
     } catch (e) {
       setError(`Vendedores: ${(e as Error).message}`);
     }
@@ -75,7 +75,7 @@ export default function CortesiasScreen() {
   async function handleSave() {
     const n = Number(cantidad);
     if (!sellerId || !eventId) {
-      setError("Elige vendedor y evento.");
+      setError("Elige usuario y evento.");
       return;
     }
     if (!Number.isInteger(n) || n < 0) {
@@ -103,7 +103,7 @@ export default function CortesiasScreen() {
           <View style={s.goldRule} />
           <BackHeader fallback="/(admin)" />
           <Text style={s.meta}>
-            Asigna boletos gratis por vendedor y evento, sin límite. El vendedor no
+            Asigna boletos gratis por usuario y evento, sin límite. El usuario no
             puede exceder lo asignado.
           </Text>
 
@@ -120,9 +120,9 @@ export default function CortesiasScreen() {
               ListHeaderComponent={
                 <View style={s.card}>
                   <Text style={s.sectionTitle}>Asignar cortesías</Text>
-                  <Text style={s.label}>Vendedor</Text>
+                  <Text style={s.label}>Usuario</Text>
                   {sellers.length === 0 ? (
-                    <Text style={s.meta}>Sin vendedores cargados.</Text>
+                    <Text style={s.meta}>Sin usuarios cargados.</Text>
                   ) : null}
                   <View style={{ gap: 8 }}>
                     {sellers.map((seller) => {

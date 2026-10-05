@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
 import { useEventStyles } from "@/features/events/eventStyles";
@@ -91,7 +91,7 @@ export default function BoletosScreen() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      setTickets(await allSales());
+      setTickets(await allSales({ offline: true }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -159,6 +159,12 @@ export default function BoletosScreen() {
               </Text>
             </>
           )}
+
+          <Pressable
+            onPress={() => router.push("/(admin)/cortesias")}
+            style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+            <Text style={s.secondaryButtonText}>Asignar cortesías</Text>
+          </Pressable>
 
           <Pressable
             onPress={() => load()}

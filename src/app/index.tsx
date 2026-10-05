@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 import { useAuth } from "@/auth/AuthProvider";
+import { adminLogin, loginIsAdmin } from "@/features/auth/adminAuth";
 import { MaxContentWidth, Spacing, Type } from "@/constants/theme";
 import { useEventStyles } from "@/features/events/eventStyles";
 import { loginEmailForUsuario, supabase } from "@/lib/supabase";
@@ -41,6 +42,33 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [isAdminAccount, setIsAdminAccount] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (session) {
+      setIsAdminAccount(null);
+      return;
+    }
+    const u = usuario.trim().toLowerCase();
+    if (!u) {
+      setIsAdminAccount(null);
+      return;
+    }
+    let alive = true;
+    const timer = setTimeout(() => {
+      loginIsAdmin(u)
+        .then((value) => {
+          if (alive) setIsAdminAccount(value);
+        })
+        .catch(() => {
+          if (alive) setIsAdminAccount(false);
+        });
+    }, 400);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [usuario, session]);
 
   async function onSubmit() {
     clearNotice();
@@ -56,14 +84,26 @@ export default function LoginScreen() {
     }
     setBusy(true);
     try {
+      const adminAccount = isAdminAccount === null ? await loginIsAdmin(u) : isAdminAccount;
+      if (adminAccount) {
+        await adminLogin(u, password);
+        return;
+      }
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: loginEmailForUsuario(u),
         password,
       });
-      if (signInError) setError(friendlyAuthError(signInError.message));
-      // Si es válido, el RouteGate redirige según el rol. No navegar aquí.
-    } catch {
-      setError("Sin conexión. Revisa tu internet e inténtalo de nuevo.");
+      if (!signInError) return;
+      if (
+        /invalid login credentials/i.test(signInError.message) &&
+        (await loginIsAdmin(u).catch(() => false))
+      ) {
+        await adminLogin(u, password);
+        return;
+      }
+      setError(friendlyAuthError(signInError.message));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sin conexión. Revisa tu internet e inténtalo de nuevo.");
     } finally {
       setBusy(false);
     }
@@ -145,6 +185,14 @@ export default function LoginScreen() {
                     <Text style={s.primaryButtonText}>Iniciar sesión</Text>
                   )}
                 </Pressable>
+
+                {!session && isAdminAccount ? (
+                  <Pressable
+                    onPress={() => router.push("/reset-password")}
+                    style={({ pressed }) => [s.linkWrap, { opacity: pressed ? 0.7 : 1 }]}>
+                    <Text style={s.link}>¿Olvidaste tu contraseña?</Text>
+                  </Pressable>
+                ) : null}
 
                 {session && !profile && !requiresPasswordChange ? (
                   <Pressable onPress={signOut} style={({ pressed }) => [s.linkWrap, { opacity: pressed ? 0.7 : 1 }]}>

@@ -25,6 +25,8 @@ import { BottomBar } from "@/components/nav/BottomBar";
 import { MaxContentWidth } from "@/constants/theme";
 import { useBrandPalette } from "@/features/events/eventStyles";
 import { hasRole } from "@/lib/supabase";
+import { ConnectivityProvider } from "@/offline/Connectivity";
+import { SyncProvider } from "@/offline/SyncProvider";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,6 +39,7 @@ function RouteGate() {
     if (loading) return;
     SplashScreen.hideAsync().catch(() => undefined);
     const group = segments[0];
+    if (group === "reset-password") return;
     if (!session) {
       // Registro inicial del comité: accesible sin sesión (pantalla única).
       if (group === "setup") return;
@@ -60,7 +63,7 @@ function RouteGate() {
     // compartido (nueva-venta, boleto, detalle) vive en (seller), al que
     // también tiene acceso. El destino principal sigue siendo (admin).
     const allowed = hasRole(profile, "admin")
-      ? ["(admin)", "(seller)"]
+      ? ["(admin)", "(seller)", "(access)"]
       : [
           ...(hasRole(profile, "seller") ? ["(seller)"] : []),
           ...(hasRole(profile, "access") ? ["(access)"] : []),
@@ -103,12 +106,14 @@ function AuthStack() {
           <Stack.Screen name="index" />
           <Stack.Screen name="setup" />
           <Stack.Screen name="cambiar-password" />
+          <Stack.Screen name="reset-password" />
           <Stack.Protected guard={authed}>
             <Stack.Screen name="(admin)/index" />
             <Stack.Screen name="(admin)/events" />
             <Stack.Screen name="(admin)/events/new" />
             <Stack.Screen name="(admin)/events/[id]" />
             <Stack.Screen name="(admin)/events/[id]/edit" />
+            <Stack.Screen name="(admin)/events/[id]/offline" />
             <Stack.Screen name="(admin)/usuarios" />
             <Stack.Screen name="(admin)/usuarios/nuevo" />
             <Stack.Screen name="(admin)/ventas" />
@@ -162,12 +167,16 @@ export default function RootLayout() {
 
   return (
     <ThemeChoiceProvider>
-      <AppTheme>
-        <AuthProvider>
-          <RouteGate />
-          <AuthStack />
-        </AuthProvider>
-      </AppTheme>
+      <ConnectivityProvider>
+        <AppTheme>
+          <AuthProvider>
+            <SyncProvider>
+              <RouteGate />
+              <AuthStack />
+            </SyncProvider>
+          </AuthProvider>
+        </AppTheme>
+      </ConnectivityProvider>
     </ThemeChoiceProvider>
   );
 }

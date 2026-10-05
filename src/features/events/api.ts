@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { isOfflineError, onlineFirst } from "@/lib/online";
+import { listOfflineEvents } from "@/lib/offlineSnapshot";
 
 import type { EventEstado, EventItem, EventPhase } from "./types";
 
@@ -46,12 +48,22 @@ function toPhase(row: Record<string, unknown>): EventPhase {
 }
 
 export async function listEvents(): Promise<EventItem[]> {
-  const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .order("fecha", { ascending: true });
-  if (error) throw friendlyDbError(error, "No se pudieron cargar los eventos.");
-  return (data as Record<string, unknown>[]).map(toEvent);
+  try {
+    return await onlineFirst(async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .order("fecha", { ascending: true });
+      if (error) throw friendlyDbError(error, "No se pudieron cargar los eventos.");
+      return (data as Record<string, unknown>[]).map(toEvent);
+    });
+  } catch (e) {
+    if (isOfflineError(e)) {
+      const local = await listOfflineEvents().catch(() => [] as EventItem[]);
+      if (local.length > 0) return local;
+    }
+    throw e;
+  }
 }
 
 export async function getEvent(id: string): Promise<EventItem | null> {

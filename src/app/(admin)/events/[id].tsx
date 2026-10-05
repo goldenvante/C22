@@ -164,6 +164,16 @@ export default function EventDetailScreen() {
                   style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
                   <Text style={s.secondaryButtonText}>Editar datos</Text>
                 </Pressable>
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(admin)/events/[id]/offline",
+                      params: { id: event.id },
+                    })
+                  }
+                  style={({ pressed }) => [s.secondaryButton, { opacity: pressed ? 0.7 : 1 }]}>
+                  <Text style={s.secondaryButtonText}>Preparar para uso offline</Text>
+                </Pressable>
               </View>
 
               <View style={s.card}>

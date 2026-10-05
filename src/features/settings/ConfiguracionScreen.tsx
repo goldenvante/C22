@@ -9,9 +9,10 @@ import { normalizeHex, useCommittee } from "@/branding/useCommittee";
 import { BackHeader } from "@/components/back-header";
 import { ColorField } from "@/components/color-field";
 import { homeHref } from "@/components/nav/navModel";
+import { getMyEmail, setMyEmail } from "@/features/auth/adminAuth";
 import { updateCommittee } from "@/features/committees/api";
 import { useEventStyles } from "@/features/events/eventStyles";
-import { hasRole } from "@/lib/supabase";
+import { AUTH_EMAIL_DOMAIN, hasRole } from "@/lib/supabase";
 
 /**
  * Configuración del espacio: identidad del comité (solo admin, vía RLS) y
@@ -33,6 +34,32 @@ export default function ConfiguracionScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoverySaving, setRecoverySaving] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!canEditBrand) return;
+    let alive = true;
+    setRecoveryLoading(true);
+    setRecoveryError(null);
+    getMyEmail()
+      .then((value) => {
+        if (!alive) return;
+        setRecoveryEmail(value);
+        setRecoveryLoading(false);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setRecoveryError((e as Error).message);
+        setRecoveryLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [canEditBrand]);
 
   useEffect(() => {
     if (!committee) return;
@@ -83,6 +110,21 @@ export default function ConfiguracionScreen() {
       setError((e as Error).message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveRecoveryEmail() {
+    setRecoveryError(null);
+    setRecoveryNotice(null);
+    setRecoverySaving(true);
+    try {
+      const saved = await setMyEmail(recoveryEmail);
+      setRecoveryEmail(saved);
+      setRecoveryNotice("Correo guardado.");
+    } catch (e) {
+      setRecoveryError((e as Error).message);
+    } finally {
+      setRecoverySaving(false);
     }
   }
 
@@ -143,6 +185,53 @@ export default function ConfiguracionScreen() {
               ) : (
                 <Text style={s.meta}>No tienes un comité asignado.</Text>
               )}
+            </View>
+          ) : null}
+
+          {canEditBrand ? (
+            <View style={{ gap: 12 }}>
+              <Text style={s.sectionTitle}>Correo de recuperación</Text>
+              <View style={s.goldRule} />
+              <Text style={s.meta}>
+                A este correo se envía el enlace si olvidas tu contraseña.
+              </Text>
+
+              {recoveryLoading ? (
+                <ActivityIndicator color={p.primary} />
+              ) : (
+                <TextInput
+                  value={recoveryEmail}
+                  onChangeText={setRecoveryEmail}
+                  placeholder="admin@ejemplo.com"
+                  placeholderTextColor={p.textSoft}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={s.input}
+                />
+              )}
+
+              {recoveryEmail.toLowerCase().endsWith(`@${AUTH_EMAIL_DOMAIN}`) ? (
+                <Text style={s.error}>
+                  Ese correo no puede recibir mensajes. Usa un correo personal (por ejemplo
+                  @gmail.com).
+                </Text>
+              ) : null}
+
+              <Pressable
+                disabled={recoverySaving || recoveryLoading}
+                onPress={saveRecoveryEmail}
+                style={({ pressed }) => [
+                  s.primaryButton,
+                  { opacity: recoverySaving || recoveryLoading ? 0.5 : pressed ? 0.7 : 1 },
+                ]}>
+                <Text style={s.primaryButtonText}>
+                  {recoverySaving ? "Guardando…" : "Guardar correo"}
+                </Text>
+              </Pressable>
+
+              {recoveryError ? <Text style={s.error}>{recoveryError}</Text> : null}
+              {recoveryNotice ? <Text style={s.meta}>{recoveryNotice}</Text> : null}
             </View>
           ) : null}
 

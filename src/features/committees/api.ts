@@ -13,6 +13,7 @@ export type SignupCommitteeInput = {
   /** URL pública del logo; en el registro llega como null y se sube con uploadCommitteeLogo tras iniciar sesión. */
   logoUrl?: string | null;
   usuario: string;
+  email: string;
   nombre: string;
   password: string;
 };
@@ -21,16 +22,19 @@ export type SignupCommitteeResult = {
   committeeId: string;
   id: string;
   usuario: string;
+  email?: string;
 };
 
 function friendlySignupError(code?: string, message?: string, status?: number): Error {
   if (code === "USUARIO_TAKEN") return new Error("El usuario ya existe. Elige otro nombre de usuario.");
+  if (code === "EMAIL_TAKEN") return new Error("Ese correo ya está en uso por otra cuenta.");
   if (code === "INVALID_COMMITTEE") return new Error("Nombre del comité inválido (2-80 caracteres).");
   if (code === "INVALID_COLORS") return new Error("Colores inválidos. Usa formato #RRGGBB.");
   if (code === "INVALID_USUARIO") {
     return new Error("Usuario inválido: 3-32 caracteres, minúsculas, números, punto, guion o guion bajo.");
   }
   if (code === "INVALID_PASSWORD") return new Error("La contraseña debe tener al menos 8 caracteres.");
+  if (code === "INVALID_EMAIL") return new Error("Escribe un correo electrónico válido.");
   if (message) return new Error(message);
   if (status === 409) return new Error("El usuario ya existe. Elige otro nombre de usuario.");
   return new Error("No se pudo registrar el comité. Inténtalo de nuevo.");
@@ -53,6 +57,10 @@ export async function signupCommittee(input: SignupCommitteeInput): Promise<Sign
   if (!USUARIO_RE.test(usuario)) {
     throw new Error("Usuario inválido: 3-32 caracteres, minúsculas, números, punto, guion o guion bajo.");
   }
+  const email = input.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) {
+    throw new Error("Escribe un correo electrónico válido.");
+  }
   if (nombre.length < 1 || nombre.length > 120) {
     throw new Error("El nombre del encargado debe tener entre 1 y 120 caracteres.");
   }
@@ -68,6 +76,7 @@ export async function signupCommittee(input: SignupCommitteeInput): Promise<Sign
       colorFondo: input.colorFondo.toUpperCase(),
       logoUrl: input.logoUrl ?? null,
       usuario,
+      email,
       nombre,
       password: input.password,
     },
@@ -82,9 +91,14 @@ export async function signupCommittee(input: SignupCommitteeInput): Promise<Sign
       throw friendlySignupError(undefined, undefined, e.status);
     }
   }
-  const created = data as { ok?: boolean; committeeId?: string; id?: string; usuario?: string };
+  const created = data as { ok?: boolean; committeeId?: string; id?: string; usuario?: string; email?: string };
   if (!created?.committeeId || !created?.id) throw new Error("Respuesta inesperada del servidor.");
-  return { committeeId: created.committeeId, id: created.id, usuario: created.usuario ?? usuario };
+  return {
+    committeeId: created.committeeId,
+    id: created.id,
+    usuario: created.usuario ?? usuario,
+    email: created.email ?? email,
+  };
 }
 
 /** Comité del admin actual (para ajustes de branding). */

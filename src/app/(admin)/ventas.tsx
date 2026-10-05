@@ -41,7 +41,7 @@ export default function AdminVentasScreen() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      setSales(await allSales());
+      setSales(await allSales({ offline: true }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -103,6 +103,10 @@ export default function AdminVentasScreen() {
               }
               renderItem={({ item }) => {
                 const badge = ticketBadge(item.estado);
+                const evento = item.evento?.nombre ?? "Evento no disponible";
+                const meta = item.metodo_pago
+                  ? `${evento} · ${item.vendedor?.nombre ?? "—"} · ${formatPrecio(item.precio_pagado)} · ${METODO_LABEL[item.metodo_pago]}`
+                  : evento;
                 return (
                   <Pressable
                     onPress={() =>
@@ -116,11 +120,7 @@ export default function AdminVentasScreen() {
                         </View>
                       </View>
                       <Text style={s.body}>{item.comprador_nombre}</Text>
-                      <Text style={s.meta}>
-                        {item.evento?.nombre ?? "Evento no disponible"} ·{" "}
-                        {item.vendedor?.nombre ?? "—"} · {formatPrecio(item.precio_pagado)} ·{" "}
-                        {METODO_LABEL[item.metodo_pago]}
-                      </Text>
+                      <Text style={s.meta}>{meta}</Text>
                     </View>
                   </Pressable>
                 );

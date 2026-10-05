@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 
+import { deleteMeta, readMeta, writeMeta } from "@/offline/db";
 import { supabase, type Profile } from "@/lib/supabase";
 
 type AuthContextValue = {
@@ -29,14 +30,38 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-async function fetchProfile(userId: string): Promise<Profile | null> {
+type FetchProfileResult = { profile: Profile | null; failed: boolean };
+
+async function fetchProfile(userId: string): Promise<FetchProfileResult> {
   const { data, error } = await supabase
     .from("profiles")
     .select("id,usuario,nombre,roles,activo,committee_id")
     .eq("id", userId)
     .maybeSingle();
-  if (error || !data) return null;
-  return data as Profile;
+  if (error) return { profile: null, failed: true };
+  if (!data) return { profile: null, failed: false };
+  return { profile: data as Profile, failed: false };
+}
+
+const profileCacheKey = (userId: string) => `profile:${userId}`;
+
+async function readCachedProfile(userId: string): Promise<Profile | null> {
+  try {
+    const raw = await readMeta(profileCacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Profile;
+    return parsed && parsed.id === userId ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCachedProfile(profile: Profile): Promise<void> {
+  try {
+    await writeMeta(profileCacheKey(profile.id), JSON.stringify(profile));
+  } catch {
+    // Sin storage local se continúa solo con la red.
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -69,17 +94,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
-      const p = await fetchProfile(session.user.id).catch(() => null);
+      const res = await fetchProfile(session.user.id).catch(() => ({
+        profile: null,
+        failed: true,
+      }));
       if (!alive) return;
-      if (!p) {
+      const p = res.profile;
+      if (p) {
+        if (!p.activo) {
+          setProfile(null);
+          setNotice("Tu cuenta está desactivada. Contacta al administrador.");
+          await supabase.auth.signOut();
+        } else {
+          setProfile(p);
+          await writeCachedProfile(p);
+        }
+      } else if (res.failed) {
+        // Sin respuesta del servidor (sin conexión): se conserva el perfil ya
+        // visto en este dispositivo para no dejar al usuario sin destino.
+        const cached = await readCachedProfile(session.user.id);
+        if (!alive) return;
+        if (cached) {
+          setProfile(cached);
+        } else {
+          setProfile(null);
+          setNotice("Tu usuario no tiene perfil asignado. Contacta al administrador.");
+        }
+      } else {
         setProfile(null);
         setNotice("Tu usuario no tiene perfil asignado. Contacta al administrador.");
-      } else if (!p.activo) {
-        setProfile(null);
-        setNotice("Tu cuenta está desactivada. Contacta al administrador.");
-        await supabase.auth.signOut();
-      } else {
-        setProfile(p);
       }
       setLoading(false);
     }
@@ -106,6 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // sesión muerta. RouteGate navega a "/" al ver session === null.
         setProfile(null);
         setSession(null);
+        const signedOutId = session?.user?.id;
+        if (signedOutId) {
+          await deleteMeta(profileCacheKey(signedOutId)).catch(() => undefined);
+        }
         try {
           // Revocación best-effort en segundo plano: no bloquea ni revierte
           // la limpieza local. Si llega SIGNED_OUT después, reasigna null.

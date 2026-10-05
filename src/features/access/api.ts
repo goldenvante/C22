@@ -1,5 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import type { TicketEstado } from "@/features/sales/types";
+import type { ConnectivityStatus } from "@/offline/Connectivity";
+import { OFFLINE_BLOCK_MESSAGES } from "@/offline/repo/events";
+import { validateOffline } from "@/offline/repo/tickets";
 
 /**
  * Códigos EXACTOS que devuelve la RPC validate_entry. No inventar otros:
@@ -333,4 +336,49 @@ export async function validateEntryById(ticketId: string, eventId: string): Prom
   });
   if (error) throw friendlyRpcError(error);
   return parseValidateResult(data);
+}
+
+export type ScanResult = ValidateResult & {
+  /** true cuando el resultado salió de SQLite y no de Supabase. */
+  offline: boolean;
+  /** Paquete sin conexión sin sincronizar por más de 12 h (advertencia). */
+  stale: boolean;
+  /** Operación enlazada en sync_queue, pendiente de FASE 6. */
+  pendingSync: boolean;
+  operationId: string | null;
+};
+
+/**
+ * Selecciona ONLINE u OFFLINE: "unknown" conserva el comportamiento actual
+ * (se considera online). El flujo online sigue siendo validateEntry sin cambios.
+ */
+export async function validateScan(
+  qrValue: string,
+  eventId: string,
+  status: ConnectivityStatus,
+): Promise<ScanResult> {
+  if (status === "offline") {
+    const local = await validateOffline(qrValue, eventId);
+    if (local.blocked) throw new Error(OFFLINE_BLOCK_MESSAGES[local.blocked]);
+    return {
+      ok: local.ok,
+      code: local.code,
+      folio: local.folio,
+      comprador: local.comprador,
+      ticketId: local.ticketId,
+      fase: local.fase,
+      offline: true,
+      stale: local.stale,
+      pendingSync: local.pendingSync,
+      operationId: local.operationId,
+    };
+  }
+  const remote = await validateTicket(qrValue, eventId);
+  return {
+    ...remote,
+    offline: false,
+    stale: false,
+    pendingSync: false,
+    operationId: null,
+  };
 }

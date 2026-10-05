@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { isOfflineError, onlineFirst } from "@/lib/online";
+import { listOfflineSales } from "@/lib/offlineSnapshot";
 import { type EventItem, type EventPhase } from "@/features/events/types";
 
 import {
@@ -145,24 +147,40 @@ async function callerUid(): Promise<string> {
 
 /** Ventas propias del vendedor autenticado, recientes primero. */
 export async function mySales(): Promise<SaleTicket[]> {
-  const uid = await callerUid();
-  const { data, error } = await supabase
-    .from("tickets")
-    .select(SALE_SELECT)
-    .eq("seller_id", uid)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message || "No se pudieron cargar tus ventas.");
-  return ((data ?? []) as unknown as Record<string, unknown>[]).map(toSale);
+  return onlineFirst(async () => {
+    const uid = await callerUid();
+    const { data, error } = await supabase
+      .from("tickets")
+      .select(SALE_SELECT)
+      .eq("seller_id", uid)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message || "No se pudieron cargar tus ventas.");
+    return ((data ?? []) as unknown as Record<string, unknown>[]).map(toSale);
+  });
 }
 
-/** Todas las ventas (solo admin por RLS). */
-export async function allSales(): Promise<SaleTicket[]> {
-  const { data, error } = await supabase
-    .from("tickets")
-    .select(SALE_SELECT)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message || "No se pudieron cargar las ventas.");
-  return ((data ?? []) as unknown as Record<string, unknown>[]).map(toSale);
+/**
+ * Todas las ventas (solo admin por RLS). `offline: true` devuelve el snapshot
+ * local cuando no hay red: sirve para resúmenes, no para importes (el paquete
+ * offline no guarda precio ni método de pago).
+ */
+export async function allSales(options: { offline?: boolean } = {}): Promise<SaleTicket[]> {
+  try {
+    return await onlineFirst(async () => {
+      const { data, error } = await supabase
+        .from("tickets")
+        .select(SALE_SELECT)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message || "No se pudieron cargar las ventas.");
+      return ((data ?? []) as unknown as Record<string, unknown>[]).map(toSale);
+    });
+  } catch (e) {
+    if (options.offline && isOfflineError(e)) {
+      const local = await listOfflineSales().catch(() => [] as SaleTicket[]);
+      if (local.length > 0) return local;
+    }
+    throw e;
+  }
 }
 
 /** Detalle de una venta (RLS: propia si seller, todas si admin). */
