@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
+import Head from "expo-router/head";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import type { ReactNode } from "react";
@@ -243,18 +244,23 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeChoiceProvider>
-      <ConnectivityProvider>
-        <AppTheme>
-          <AuthProvider>
-            <SyncProvider>
-              <RouteGate />
-              <AuthStack />
-            </SyncProvider>
-          </AuthProvider>
-        </AppTheme>
-      </ConnectivityProvider>
-    </ThemeChoiceProvider>
+    <>
+      <Head>
+        <title>MONARQ</title>
+      </Head>
+      <ThemeChoiceProvider>
+        <ConnectivityProvider>
+          <AppTheme>
+            <AuthProvider>
+              <SyncProvider>
+                <RouteGate />
+                <AuthStack />
+              </SyncProvider>
+            </AuthProvider>
+          </AppTheme>
+        </ConnectivityProvider>
+      </ThemeChoiceProvider>
+    </>
   );
 }
 
