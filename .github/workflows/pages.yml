@@ -31,8 +31,9 @@ jobs:
           const url = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
           const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
           let msg = "";
-          if (!url) msg = "Falta el secret EXPO_PUBLIC_SUPABASE_URL.";
-          else {
+          if (!url) {
+            msg = "Falta el secret EXPO_PUBLIC_SUPABASE_URL.";
+          } else {
             try {
               const u = new URL(url);
               if (u.protocol !== "https:") msg = "EXPO_PUBLIC_SUPABASE_URL no usa https.";
@@ -40,21 +41,28 @@ jobs:
               msg = "EXPO_PUBLIC_SUPABASE_URL no es una URL valida.";
             }
           }
-          if (!msg && !key.startsWith("eyJ")) msg = "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY no parece JWT (debe empezar por eyJ).";
+          if (!msg && !(key.startsWith("eyJ") || key.startsWith("sb_"))) {
+            msg = "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY no parece una publishable key.";
+          }
           if (msg) {
-            console.log("::error::" + msg + " Pega en el secret SOLO el valor, sin nombre ni comillas. url_len=" + url.length + " key_len=" + key.length);
+            console.log("::error::" + msg + " Pega en el secret SOLO el valor, sin nombre de variable ni comillas. url_len=" + url.length + " key_len=" + key.length);
             process.exit(1);
           }
-          console.log("env OK (url_len=" + url.length + " key_len=" + key.length + ", valores no impresos)");
+          console.log("env OK url_len=" + url.length + " key_len=" + key.length + " (valores no impresos)");
           '
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      - name: Write .env for Expo
+        run: |
+          printf 'EXPO_PUBLIC_SUPABASE_URL=%s\nEXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' \
+            "$EXPO_PUBLIC_SUPABASE_URL" "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY" > .env
+          echo ".env escrito con url_len=${#EXPO_PUBLIC_SUPABASE_URL} key_len=${#EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY}"
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       - name: Export web
         run: npx expo export --platform web --output-dir dist-web 2>&1 | tee export.log
-        env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       - name: Fallback for deep links
         run: |
           ls -la dist-web
