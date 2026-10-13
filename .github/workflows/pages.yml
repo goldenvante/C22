@@ -18,8 +18,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -56,7 +56,7 @@ jobs:
           if (url !== rawUrl || key !== rawKey) {
             console.log("::warning::El secret venia con espacios/comillas de mas; se normalizo en la build. Corrigelo en Settings -> Secrets and variables -> Actions.");
           }
-          console.log("env OK url_len=" + url.length + " key_len=" + key.length + " (originales url_len=" + rawUrl.length + " key_len=" + rawKey.length + ")");
+          console.log("::notice::env OK url_len=" + url.length + " key_len=" + key.length + " (originales url_len=" + rawUrl.length + " key_len=" + rawKey.length + ")");
           '
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
@@ -78,7 +78,7 @@ jobs:
             echo "export.log (final):"; tail -n 60 export.log 2>&1
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: dist-web
 
@@ -90,4 +90,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5.0.1
