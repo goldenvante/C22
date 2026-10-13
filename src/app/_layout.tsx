@@ -58,6 +58,7 @@ import { MaxContentWidth } from "@/constants/theme";
 import { useBrandPalette } from "@/features/events/eventStyles";
 import { useGate } from "@/features/gate/useGate";
 import { hasRole } from "@/lib/supabase";
+import { installWebAlert } from "@/lib/webAlert";
 import { ConnectivityProvider } from "@/offline/Connectivity";
 import { SyncProvider } from "@/offline/SyncProvider";
 
@@ -238,6 +239,10 @@ export default function RootLayout() {
     RubikWetPaint_400Regular,
     Lacquer_400Regular,
   });
+
+  useEffect(() => {
+    installWebAlert();
+  }, []);
 
   if (!fontsLoaded && !fontsError) {
     return <View style={{ flex: 1, backgroundColor: MONARQ.background }} />;
