@@ -98,6 +98,7 @@ export default function SetupScreen() {
   const { s, p } = useEventStyles();
   const { scheme } = useThemeChoice();
   const [committeeNombre, setCommitteeNombre] = useState("");
+  const [facultad, setFacultad] = useState("");
   const [primary, setPrimary] = useState(NEUTRAL_BRAND.primary);
   const [secondary, setSecondary] = useState(NEUTRAL_BRAND.secondary);
   const [background, setBackground] = useState(NEUTRAL_BRAND.background);
@@ -147,6 +148,10 @@ export default function SetupScreen() {
       setError("Escribe el nombre de tu comité (mínimo 2 caracteres).");
       return;
     }
+    if (facultad.trim().length > 160) {
+      setError("La facultad no puede superar los 160 caracteres.");
+      return;
+    }
     if (!pColor || !sColor || !bColor) {
       setError("Revisa los colores: usa formato #RRGGBB.");
       return;
@@ -183,6 +188,7 @@ export default function SetupScreen() {
           colorSecundario: sColor,
           colorFondo: bColor,
           logoUrl: null,
+          facultad: facultad.trim() || null,
           usuario: u,
           email: mail,
           nombre: encargado.trim(),
@@ -246,7 +252,7 @@ export default function SetupScreen() {
               </View>
 
               {/* 1. Identidad del comité */}
-              <Section s={s} title="Identidad del comité" description="Nombre con el que tu comité aparecerá en la app." />
+              <Section s={s} title="Identidad del comité" description="Nombre con el que tu comité aparecerá en la app y facultad que se muestra en el boleto." />
               <Text style={s.label}>Nombre del comité</Text>
               <TextInput
                 value={committeeNombre}
@@ -257,6 +263,18 @@ export default function SetupScreen() {
                 maxLength={80}
                 style={s.input}
               />
+
+              <Text style={s.label}>Facultad</Text>
+              <TextInput
+                value={facultad}
+                onChangeText={setFacultad}
+                placeholder="Ej. Facultad de Ingeniería"
+                placeholderTextColor={p.textSoft}
+                editable={!busy}
+                maxLength={160}
+                style={s.input}
+              />
+              <Text style={s.meta}>Aparece bajo el nombre del evento en el boleto. Puedes dejarlo vacío.</Text>
 
               {/* 2. Identidad visual */}
               <Section s={s} title="Identidad visual" description="Logo y colores que se aplicarán a toda tu app." />

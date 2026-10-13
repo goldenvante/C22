@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -13,10 +13,20 @@ import {
   ESTADO_LABEL,
   formatFecha,
   formatHora,
+  formatPrecio,
   NEXT_ESTADOS,
   type EventEstado,
   type EventItem,
 } from "@/features/events/types";
+import { allSales, cancelSale } from "@/features/sales/api";
+import {
+  formatFolio,
+  ticketBadge,
+  TICKET_ESTADO_LABEL,
+  type SaleTicket,
+} from "@/features/sales/types";
+import { listStaff } from "@/features/users/api";
+import type { Profile } from "@/lib/supabase";
 
 const ESTADO_ACTION_LABEL: Record<EventEstado, string> = {
   borrador: "Borrador",
@@ -37,6 +47,11 @@ export default function EventDetailScreen() {
   const [busyMeta, setBusyMeta] = useState(false);
   const [metaMsg, setMetaMsg] = useState<string | null>(null);
   const [metaError, setMetaError] = useState<string | null>(null);
+  const [usuarios, setUsuarios] = useState<Profile[]>([]);
+  const [ventas, setVentas] = useState<SaleTicket[]>([]);
+  const [ventasLoading, setVentasLoading] = useState(true);
+  const [ventasError, setVentasError] = useState<string | null>(null);
+  const [busyVentaId, setBusyVentaId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) {
@@ -56,10 +71,42 @@ export default function EventDetailScreen() {
     }
   }, [id]);
 
+  const loadVentas = useCallback(async () => {
+    if (!id) {
+      setVentasLoading(false);
+      return;
+    }
+    setVentasError(null);
+    try {
+      const [staff, todas] = await Promise.all([listStaff(), allSales()]);
+      setUsuarios(staff.filter((u) => u.activo !== false));
+      setVentas(todas.filter((t) => t.event_id === id));
+    } catch (e) {
+      setVentasError((e as Error).message);
+    } finally {
+      setVentasLoading(false);
+    }
+  }, [id]);
+
+  const porUsuario = useMemo(() => {
+    const grupos = new Map<string, { perfil: Profile | null; items: SaleTicket[] }>();
+    for (const perfil of usuarios) grupos.set(perfil.id, { perfil, items: [] });
+    for (const t of ventas) {
+      const grupo = grupos.get(t.seller_id) ?? { perfil: null, items: [] };
+      grupo.items.push(t);
+      grupos.set(t.seller_id, grupo);
+    }
+    return [...grupos.values()].sort((a, b) => {
+      if (b.items.length !== a.items.length) return b.items.length - a.items.length;
+      return (a.perfil?.nombre ?? "").localeCompare(b.perfil?.nombre ?? "");
+    });
+  }, [usuarios, ventas]);
+
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load]),
+      loadVentas();
+    }, [load, loadVentas]),
   );
 
   function confirmEstado(next: EventEstado) {    if (!event) return;
@@ -80,6 +127,32 @@ export default function EventDetailScreen() {
               setError((e as Error).message);
             } finally {
               setBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function confirmCancelVenta(venta: SaleTicket) {
+    Alert.alert(
+      "Cancelar venta",
+      `¿Cancelar el boleto ${formatFolio(venta.folio, venta.evento?.codigo ?? event?.codigo ?? "")} de ${venta.comprador_nombre}? El folio quedará consumido y no se reutilizará.`,
+      [
+        { text: "Volver", style: "cancel" },
+        {
+          text: "Cancelar venta",
+          style: "destructive",
+          onPress: async () => {
+            setBusyVentaId(venta.id);
+            setVentasError(null);
+            try {
+              await cancelSale(venta.id);
+              await loadVentas();
+            } catch (e) {
+              setVentasError((e as Error).message);
+            } finally {
+              setBusyVentaId(null);
             }
           },
         },
@@ -260,6 +333,96 @@ export default function EventDetailScreen() {
               <Text style={s.sectionTitle}>Fases y precios</Text>
               <View style={s.goldRule} />
               <PhaseManager eventId={event.id} />
+
+              <Text style={s.sectionTitle}>Ventas por usuario</Text>
+              <View style={s.goldRule} />
+              {ventasLoading ? (
+                <View style={s.center}>
+                  <ActivityIndicator color={p.primary} />
+                </View>
+              ) : (
+                <>
+                  {ventasError ? <Text style={s.error}>{ventasError}</Text> : null}
+                  {ventas.length === 0 && !ventasError ? (
+                    <Text style={s.meta}>Este evento aún no tiene boletos vendidos.</Text>
+                  ) : null}
+                  {porUsuario.map((grupo, i) => {
+                    const recaudado = grupo.items
+                      .filter((t) => t.estado !== "CANCELADO")
+                      .reduce((acc, t) => acc + t.precio_pagado, 0);
+                    return (
+                      <View key={grupo.perfil?.id ?? `sin-perfil-${i}`} style={s.card}>
+                        <View style={s.row}>
+                          <Text style={[s.smallBold, { flex: 1 }]}>
+                            {grupo.perfil
+                              ? `${grupo.perfil.nombre} (@${grupo.perfil.usuario})`
+                              : "Usuario no encontrado"}
+                          </Text>
+                          <Text style={s.meta}>
+                            {grupo.items.length} {grupo.items.length === 1 ? "boleto" : "boletos"} ·{" "}
+                            {formatPrecio(recaudado)}
+                          </Text>
+                        </View>
+                        {grupo.items.length === 0 ? (
+                          <Text style={s.meta}>Sin ventas en este evento.</Text>
+                        ) : (
+                          grupo.items.map((t, ti) => {
+                            const estado = ticketBadge(t.estado);
+                            const codigo = t.evento?.codigo ?? event?.codigo ?? "";
+                            return (
+                              <View
+                                key={t.id}
+                                style={{
+                                  borderTopWidth: ti === 0 ? 0 : 1,
+                                  borderTopColor: p.border,
+                                  paddingTop: ti === 0 ? 0 : 8,
+                                  marginTop: ti === 0 ? 0 : 4,
+                                  gap: 4,
+                                }}>
+                                <View style={s.row}>
+                                  <Text style={[s.smallBold, { flex: 1 }]}>
+                                    {formatFolio(t.folio, codigo)}
+                                  </Text>
+                                  <View style={estado.pill}>
+                                    <Text style={estado.text}>
+                                      {TICKET_ESTADO_LABEL[t.estado]}
+                                    </Text>
+                                  </View>
+                                </View>
+                                <View style={s.row}>
+                                  <Text style={[s.meta, { flex: 1 }]} numberOfLines={1}>
+                                    {t.comprador_nombre} · {formatPrecio(t.precio_pagado)}
+                                    {t.es_cortesia ? " · Cortesía" : ""}
+                                  </Text>
+                                  {t.estado === "ACTIVO" ? (
+                                    <Pressable
+                                      disabled={busyVentaId === t.id}
+                                      onPress={() => confirmCancelVenta(t)}
+                                      style={({ pressed }) => [
+                                        s.dangerButton,
+                                        { paddingHorizontal: 12, paddingVertical: 6 },
+                                        {
+                                          opacity:
+                                            busyVentaId === t.id || pressed ? 0.7 : 1,
+                                        },
+                                      ]}>
+                                      {busyVentaId === t.id ? (
+                                        <ActivityIndicator color={p.onPrimary} size="small" />
+                                      ) : (
+                                        <Text style={s.dangerButtonText}>Cancelar</Text>
+                                      )}
+                                    </Pressable>
+                                  ) : null}
+                                </View>
+                              </View>
+                            );
+                          })
+                        )}
+                      </View>
+                    );
+                  })}
+                </>
+              )}
             </>
           ) : null}
         </ScrollView>

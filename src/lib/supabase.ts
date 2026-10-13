@@ -8,7 +8,9 @@ const supabasePublishableKey =
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
-    storage: localStorage,
+    // En el pre-render web todavía no existe; supabase-js cae a su storage en
+    // memoria y en el navegador rehidrata con localStorage real.
+    storage: (globalThis as unknown as { localStorage?: Storage }).localStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
@@ -56,6 +58,11 @@ export type Committee = {
   color_secundario: string;
   color_fondo: string;
   logo_url: string | null;
+  facultad: string | null;
+  /** Familia del título del boleto (key de TICKET_FONTS o "system"). */
+  titulo_fuente: string;
+  /** Tamaño del título del boleto en pt (20-48). */
+  titulo_tamano: number;
 };
 
 export function loginEmailForUsuario(usuario: string): string {

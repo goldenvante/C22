@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { UIPalette } from "@/branding/palette";
@@ -13,6 +13,8 @@ type Props = {
   committee?: string | null;
   /** "Bienvenido, X". */
   welcome?: string | null;
+  /** Logo del comité (registrado en /setup). Se pinta junto al saludo. */
+  logo?: string | null;
   onMenu: () => void;
 };
 
@@ -63,6 +65,12 @@ const makeStyles = (p: UIPalette) =>
       fontSize: 15,
       color: p.title,
     },
+    pillLogo: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: p.surface,
+    },
   });
 
 /**
@@ -74,7 +82,7 @@ const makeStyles = (p: UIPalette) =>
  * la paleta activa: el tema elegido y los colores del comité mandan, como en
  * el resto de la app.
  */
-export function HomeHeader({ committee, welcome, onMenu }: Props) {
+export function HomeHeader({ committee, welcome, logo, onMenu }: Props) {
   const p = useBrandPalette();
   const styles = useMemo(() => makeStyles(p), [p]);
   const name = (committee ?? "").trim();
@@ -103,7 +111,11 @@ export function HomeHeader({ committee, welcome, onMenu }: Props) {
         {name ? <Text style={styles.committee}>{name}</Text> : null}
         {welcome ? (
           <View style={styles.pill}>
-            <FlagIcon size={16} color={p.accent} strokeWidth={1.6} />
+            {logo ? (
+              <Image source={{ uri: logo }} style={styles.pillLogo} />
+            ) : (
+              <FlagIcon size={16} color={p.accent} strokeWidth={1.6} />
+            )}
             <Text style={styles.pillText}>{welcome}</Text>
           </View>
         ) : null}

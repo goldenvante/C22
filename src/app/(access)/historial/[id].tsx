@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import { BackHeader } from "@/components/back-header";
+import { useCommittee } from "@/branding/useCommittee";
 import { useEventStyles } from "@/features/events/eventStyles";
 import {
   getEntryTicket,
@@ -17,6 +18,7 @@ import { BoletoCard, type BoletoData } from "@/features/sales/BoletoCard";
 export default function AccesoDetalleScreen() {
   const { s, p } = useEventStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { committee } = useCommittee();
   const [scan, setScan] = useState<ScanRecord | null>(null);
   const [bundle, setBundle] = useState<EntryTicketBundle | null>(null);
   const [noTicket, setNoTicket] = useState(false);
@@ -113,7 +115,15 @@ export default function AccesoDetalleScreen() {
                 <Text style={s.meta}>{scan.evento?.nombre ?? "Evento no disponible"}</Text>
                 {bundle?.fase ? <Text style={s.meta}>Etapa: {bundle.fase}</Text> : null}
               </View>
-              {boleto ? <BoletoCard sale={boleto} /> : null}
+              {boleto ? (
+                <BoletoCard
+                  sale={boleto}
+                  committeeName={committee?.nombre}
+                  committeeFacultad={committee?.facultad}
+                  committeeTitleFont={committee?.titulo_fuente}
+                  committeeTitleSize={committee?.titulo_tamano}
+                />
+              ) : null}
               {noTicket ? (
                 <Text style={s.meta}>
                   Este intento no tiene boleto asociado (código inexistente).

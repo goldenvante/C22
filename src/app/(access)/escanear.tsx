@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import {
@@ -75,6 +75,24 @@ export default function EscanearScreen() {
   function handleNext() {
     setResult(null);
     setError(null);
+  }
+
+  if (Platform.OS === "web") {
+    return (
+      <View style={s.screen}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+          <View style={s.scroll}>
+            <Text style={s.screenTitle}>Control de acceso</Text>
+            <View style={s.goldRule} />
+            <BackHeader fallback="/(access)" />
+            <Text style={s.meta}>
+              El escaneo de QR sólo está disponible en la app de Android. Desde la web puedes
+              revisar el historial y los boletos.
+            </Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
   }
 
   if (!eventId) {

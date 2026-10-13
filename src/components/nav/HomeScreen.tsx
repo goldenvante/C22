@@ -34,6 +34,7 @@ export type HomeCard = {
 type Props = {
   committee?: string | null;
   welcome?: string | null;
+  logo?: string | null;
   loading?: boolean;
   cards: HomeCard[];
   /** Elementos adicionales al final del árbol (modales de la pantalla). */
@@ -91,7 +92,7 @@ const makeStyles = (p: UIPalette) =>
  *
  * La barra inferior NO vive aquí: se monta una sola vez en el root layout.
  */
-export function HomeScreen({ committee, welcome, loading, cards, children }: Props) {
+export function HomeScreen({ committee, welcome, logo, loading, cards, children }: Props) {
   const p = useBrandPalette();
   const styles = useMemo(() => makeStyles(p), [p]);
   const [menu, setMenu] = useState(false);
@@ -116,6 +117,7 @@ export function HomeScreen({ committee, welcome, loading, cards, children }: Pro
         <HomeHeader
           committee={committee}
           welcome={welcome}
+          logo={logo}
           onMenu={() => setMenu(true)}
         />
         <ScrollView

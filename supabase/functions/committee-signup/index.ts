@@ -77,6 +77,11 @@ export default {
     if (logoUrl && logoUrl.length > 500) {
       return fail(400, "INVALID_LOGO", "URL del logo demasiado larga.");
     }
+    const facultadRaw = typeof body.facultad === "string" ? body.facultad.trim() : "";
+    if (facultadRaw.length > 160) {
+      return fail(400, "INVALID_FACULTAD", "La facultad no puede superar los 160 caracteres.");
+    }
+    const facultad = facultadRaw || null;
 
     // ---- Admin encargado ----
     const usuario = normalizeUsuario(body.usuario);
@@ -112,6 +117,7 @@ export default {
         color_secundario: colorSecundario,
         color_fondo: colorFondo,
         logo_url: logoUrl,
+        facultad,
       })
       .select("id")
       .single();

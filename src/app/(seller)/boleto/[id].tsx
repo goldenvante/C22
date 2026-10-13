@@ -9,8 +9,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import * as MediaLibrary from "expo-media-library";
-import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
 
 import { BackHeader } from "@/components/back-header";
@@ -18,6 +16,7 @@ import { useCommittee } from "@/branding/useCommittee";
 import { useEventStyles } from "@/features/events/eventStyles";
 import { getSale } from "@/features/sales/api";
 import { BoletoCard } from "@/features/sales/BoletoCard";
+import { MediaLibrary, Sharing } from "@/features/sales/media";
 import type { SaleTicket } from "@/features/sales/types";
 
 export default function BoletoScreen() {
@@ -118,7 +117,14 @@ export default function BoletoScreen() {
             <Text style={s.error}>{error}</Text>
           ) : sale ? (
             <>
-              <BoletoCard sale={sale} committeeName={committee?.nombre} ref={cardRef} />
+              <BoletoCard
+                sale={sale}
+                committeeName={committee?.nombre}
+                committeeFacultad={committee?.facultad}
+                committeeTitleFont={committee?.titulo_fuente}
+                committeeTitleSize={committee?.titulo_tamano}
+                ref={cardRef}
+              />
 
               {sale.estado === "CANCELADO" ? (
                 <Text style={s.error}>

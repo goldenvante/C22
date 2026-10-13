@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
@@ -93,6 +93,24 @@ export default function PrepareOfflineScreen() {
       setBusy(false);
       setProgress(null);
     }
+  }
+
+  if (Platform.OS === "web") {
+    return (
+      <View style={s.screen}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+          <ScrollView contentContainerStyle={s.scroll}>
+            <Text style={s.screenTitle}>Paquete offline</Text>
+            <View style={s.goldRule} />
+            <BackHeader fallback="/(admin)" />
+            <Text style={s.meta}>
+              El paquete offline y la sincronización sólo están disponibles en la app de Android.
+              En la web todo se envía en línea.
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    );
   }
 
   if (loading) {

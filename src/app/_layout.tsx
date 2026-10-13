@@ -9,7 +9,8 @@ import type { ReactNode } from "react";
 /**
  * Cada peso se importa por su archivo: el `index.js` de estos paquetes evalúa
  * un `require` por variante, así que importar desde la raíz empaqueta las ~25
- * fuentes (≈2 MB) en vez de estas 6.
+ * fuentes (≈2 MB) en vez de estas. Las últimas 29 son las del catálogo del
+ * título del boleto (constants/type.ts: TICKET_FONTS).
  */
 const Manrope_800ExtraBold = require("@expo-google-fonts/manrope/800ExtraBold/Manrope_800ExtraBold.ttf");
 const Manrope_600SemiBold = require("@expo-google-fonts/manrope/600SemiBold/Manrope_600SemiBold.ttf");
@@ -18,12 +19,43 @@ const Inter_500Medium = require("@expo-google-fonts/inter/500Medium/Inter_500Med
 const Inter_600SemiBold = require("@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf");
 const Inter_700Bold = require("@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf");
 
+const BebasNeue_400Regular = require("@expo-google-fonts/bebas-neue/400Regular/BebasNeue_400Regular.ttf");
+const KalniaGlaze_700Bold = require("@expo-google-fonts/kalnia-glaze/700Bold/KalniaGlaze_700Bold.ttf");
+const Montserrat_700Bold = require("@expo-google-fonts/montserrat/700Bold/Montserrat_700Bold.ttf");
+const Oswald_600SemiBold = require("@expo-google-fonts/oswald/600SemiBold/Oswald_600SemiBold.ttf");
+const PlayfairDisplay_700Bold = require("@expo-google-fonts/playfair-display/700Bold/PlayfairDisplay_700Bold.ttf");
+const Poppins_700Bold = require("@expo-google-fonts/poppins/700Bold/Poppins_700Bold.ttf");
+const Caveat_700Bold = require("@expo-google-fonts/caveat/700Bold/Caveat_700Bold.ttf");
+const HennyPenny_400Regular = require("@expo-google-fonts/henny-penny/400Regular/HennyPenny_400Regular.ttf");
+const Lobster_400Regular = require("@expo-google-fonts/lobster/400Regular/Lobster_400Regular.ttf");
+const Merienda_700Bold = require("@expo-google-fonts/merienda/700Bold/Merienda_700Bold.ttf");
+const MountainsofChristmas_700Bold = require("@expo-google-fonts/mountains-of-christmas/700Bold/MountainsofChristmas_700Bold.ttf");
+const Pacifico_400Regular = require("@expo-google-fonts/pacifico/400Regular/Pacifico_400Regular.ttf");
+const AlexBrush_400Regular = require("@expo-google-fonts/alex-brush/400Regular/AlexBrush_400Regular.ttf");
+const Allura_400Regular = require("@expo-google-fonts/allura/400Regular/Allura_400Regular.ttf");
+const DancingScript_700Bold = require("@expo-google-fonts/dancing-script/700Bold/DancingScript_700Bold.ttf");
+const GreatVibes_400Regular = require("@expo-google-fonts/great-vibes/400Regular/GreatVibes_400Regular.ttf");
+const Italianno_400Regular = require("@expo-google-fonts/italianno/400Regular/Italianno_400Regular.ttf");
+const Parisienne_400Regular = require("@expo-google-fonts/parisienne/400Regular/Parisienne_400Regular.ttf");
+const PinyonScript_400Regular = require("@expo-google-fonts/pinyon-script/400Regular/PinyonScript_400Regular.ttf");
+const Satisfy_400Regular = require("@expo-google-fonts/satisfy/400Regular/Satisfy_400Regular.ttf");
+const Sacramento_400Regular = require("@expo-google-fonts/sacramento/400Regular/Sacramento_400Regular.ttf");
+const Tangerine_700Bold = require("@expo-google-fonts/tangerine/700Bold/Tangerine_700Bold.ttf");
+const BerkshireSwash_400Regular = require("@expo-google-fonts/berkshire-swash/400Regular/BerkshireSwash_400Regular.ttf");
+const EmilysCandy_400Regular = require("@expo-google-fonts/emilys-candy/400Regular/EmilysCandy_400Regular.ttf");
+const FontdinerSwanky_400Regular = require("@expo-google-fonts/fontdiner-swanky/400Regular/FontdinerSwanky_400Regular.ttf");
+const NewRocker_400Regular = require("@expo-google-fonts/new-rocker/400Regular/NewRocker_400Regular.ttf");
+const Nosifer_400Regular = require("@expo-google-fonts/nosifer/400Regular/Nosifer_400Regular.ttf");
+const RubikWetPaint_400Regular = require("@expo-google-fonts/rubik-wet-paint/400Regular/RubikWetPaint_400Regular.ttf");
+const Lacquer_400Regular = require("@expo-google-fonts/lacquer/400Regular/Lacquer_400Regular.ttf");
+
 import { AuthProvider, useAuth } from "@/auth/AuthProvider";
 import { ThemeChoiceProvider, useThemeChoice } from "@/branding/ThemeChoice";
 import { MONARQ } from "@/branding/palette";
 import { BottomBar } from "@/components/nav/BottomBar";
 import { MaxContentWidth } from "@/constants/theme";
 import { useBrandPalette } from "@/features/events/eventStyles";
+import { useGate } from "@/features/gate/useGate";
 import { hasRole } from "@/lib/supabase";
 import { ConnectivityProvider } from "@/offline/Connectivity";
 import { SyncProvider } from "@/offline/SyncProvider";
@@ -34,11 +66,22 @@ function RouteGate() {
   const { session, profile, loading, requiresPasswordChange } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const gate = useGate();
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || gate === null) return;
     SplashScreen.hideAsync().catch(() => undefined);
     const group = segments[0];
+    // Código de acceso por comité: bloquea TODA la app (login y registro
+    // incluidos) hasta pasar una sola vez por /access-code.
+    if (!gate) {
+      if (group !== "access-code") router.replace("/access-code");
+      return;
+    }
+    if (group === "access-code") {
+      router.replace("/");
+      return;
+    }
     if (group === "reset-password") return;
     if (!session) {
       // Registro inicial del comité: accesible sin sesión (pantalla única).
@@ -82,7 +125,7 @@ function RouteGate() {
             : "/(access)",
       );
     }
-  }, [loading, session, profile, requiresPasswordChange, segments, router]);
+  }, [loading, gate, session, profile, requiresPasswordChange, segments, router]);
 
   return null;
 }
@@ -95,15 +138,20 @@ function RouteGate() {
  * El RouteGate conserva la dirección por rol y /cambiar-password.
  */
 function AuthStack() {
-  const { session, loading, requiresPasswordChange } = useAuth();
+  const { session, profile, loading, requiresPasswordChange } = useAuth();
   const p = useBrandPalette();
   const authed = !!session && !requiresPasswordChange;
-  if (loading) return null;
+  const gate = useGate();
+  const segments = useSegments();
+  if (loading || gate === null) return null;
+  // Sin el código resuelto no se pinta login ni registro: sólo el gate.
+  if (!gate && segments[0] !== "access-code") return null;
   return (
     <View style={{ flex: 1, alignItems: "center", backgroundColor: p.background }}>
       <View style={{ flex: 1, width: "100%", maxWidth: MaxContentWidth }}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
+          <Stack.Screen name="access-code" />
           <Stack.Screen name="setup" />
           <Stack.Screen name="cambiar-password" />
           <Stack.Screen name="reset-password" />
@@ -159,6 +207,35 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    BebasNeue_400Regular,
+    KalniaGlaze_700Bold,
+    Montserrat_700Bold,
+    Oswald_600SemiBold,
+    PlayfairDisplay_700Bold,
+    Poppins_700Bold,
+    Caveat_700Bold,
+    HennyPenny_400Regular,
+    Lobster_400Regular,
+    Merienda_700Bold,
+    MountainsofChristmas_700Bold,
+    Pacifico_400Regular,
+    AlexBrush_400Regular,
+    Allura_400Regular,
+    DancingScript_700Bold,
+    GreatVibes_400Regular,
+    Italianno_400Regular,
+    Parisienne_400Regular,
+    PinyonScript_400Regular,
+    Satisfy_400Regular,
+    Sacramento_400Regular,
+    Tangerine_700Bold,
+    BerkshireSwash_400Regular,
+    EmilysCandy_400Regular,
+    FontdinerSwanky_400Regular,
+    NewRocker_400Regular,
+    Nosifer_400Regular,
+    RubikWetPaint_400Regular,
+    Lacquer_400Regular,
   });
 
   if (!fontsLoaded && !fontsError) {

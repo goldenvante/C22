@@ -55,7 +55,9 @@ export function useCommittee(): {
       setError(null);
       const { data, error: qError } = await supabase
         .from("committees")
-        .select("id,nombre,color_primario,color_secundario,color_fondo,logo_url")
+        .select(
+          "id,nombre,color_primario,color_secundario,color_fondo,logo_url,facultad,titulo_fuente,titulo_tamano",
+        )
         .eq("id", profile.committee_id)
         .maybeSingle();
       if (!alive) return;

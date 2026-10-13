@@ -1,4 +1,5 @@
 import { HEX_RE } from "@/branding/palette";
+import { isTicketFont } from "@/constants/type";
 import { supabase, type Committee } from "@/lib/supabase";
 
 export const COMMITTEE_LOGO_BUCKET = "committee-logos";
@@ -12,6 +13,7 @@ export type SignupCommitteeInput = {
   colorFondo: string;
   /** URL pública del logo; en el registro llega como null y se sube con uploadCommitteeLogo tras iniciar sesión. */
   logoUrl?: string | null;
+  facultad?: string | null;
   usuario: string;
   email: string;
   nombre: string;
@@ -67,6 +69,10 @@ export async function signupCommittee(input: SignupCommitteeInput): Promise<Sign
   if (input.password.length < 8) {
     throw new Error("La contraseña debe tener al menos 8 caracteres.");
   }
+  const facultad = input.facultad?.trim() ?? "";
+  if (facultad.length > 160) {
+    throw new Error("La facultad no puede superar los 160 caracteres.");
+  }
 
   const { data, error } = await supabase.functions.invoke("committee-signup", {
     body: {
@@ -75,6 +81,7 @@ export async function signupCommittee(input: SignupCommitteeInput): Promise<Sign
       colorSecundario: input.colorSecundario.toUpperCase(),
       colorFondo: input.colorFondo.toUpperCase(),
       logoUrl: input.logoUrl ?? null,
+      facultad: facultad || null,
       usuario,
       email,
       nombre,
@@ -105,7 +112,9 @@ export async function signupCommittee(input: SignupCommitteeInput): Promise<Sign
 export async function getMyCommittee(committeeId: string): Promise<Committee | null> {
   const { data, error } = await supabase
     .from("committees")
-    .select("id,nombre,color_primario,color_secundario,color_fondo,logo_url")
+    .select(
+      "id,nombre,color_primario,color_secundario,color_fondo,logo_url,facultad,titulo_fuente,titulo_tamano",
+    )
     .eq("id", committeeId)
     .maybeSingle();
   if (error) throw new Error("No se pudo cargar tu comité.");
@@ -119,6 +128,9 @@ export type UpdateCommitteeInput = {
   colorSecundario: string;
   colorFondo: string;
   logoUrl?: string | null;
+  facultad?: string | null;
+  tituloFuente?: string;
+  tituloTamano?: number;
 };
 
 /** Ajustes de branding (solo admin del comité, vía RLS). */
@@ -130,16 +142,30 @@ export async function updateCommittee(input: UpdateCommitteeInput): Promise<void
   if (!HEX_RE.test(input.colorPrimario) || !HEX_RE.test(input.colorSecundario) || !HEX_RE.test(input.colorFondo)) {
     throw new Error("Colores inválidos. Usa formato #RRGGBB.");
   }
-  const { error } = await supabase
-    .from("committees")
-    .update({
-      nombre,
-      color_primario: input.colorPrimario.toUpperCase(),
-      color_secundario: input.colorSecundario.toUpperCase(),
-      color_fondo: input.colorFondo.toUpperCase(),
-      logo_url: input.logoUrl ?? null,
-    })
-    .eq("id", input.id);
+  const facultad = input.facultad?.trim() ?? "";
+  if (facultad.length > 160) {
+    throw new Error("La facultad no puede superar los 160 caracteres.");
+  }
+  if (input.tituloFuente !== undefined && !isTicketFont(input.tituloFuente)) {
+    throw new Error("Fuente del título inválida.");
+  }
+  if (input.tituloTamano !== undefined && !Number.isInteger(input.tituloTamano)) {
+    throw new Error("Tamaño del título inválido (20-48).");
+  }
+  if (input.tituloTamano !== undefined && (input.tituloTamano < 20 || input.tituloTamano > 48)) {
+    throw new Error("Tamaño del título inválido (20-48).");
+  }
+  const patch: Record<string, string | number | null> = {
+    nombre,
+    color_primario: input.colorPrimario.toUpperCase(),
+    color_secundario: input.colorSecundario.toUpperCase(),
+    color_fondo: input.colorFondo.toUpperCase(),
+  };
+  if (input.logoUrl !== undefined) patch.logo_url = input.logoUrl;
+  if (input.facultad !== undefined) patch.facultad = facultad || null;
+  if (input.tituloFuente !== undefined) patch.titulo_fuente = input.tituloFuente;
+  if (input.tituloTamano !== undefined) patch.titulo_tamano = input.tituloTamano;
+  const { error } = await supabase.from("committees").update(patch).eq("id", input.id);
   if (error) throw new Error(error.message || "No se pudo guardar el comité.");
 }
 

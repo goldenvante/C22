@@ -44,6 +44,7 @@ export default function AccessHome() {
     <HomeScreen
       committee={committee?.nombre}
       welcome={profile ? `Bienvenido, ${profile.nombre || profile.usuario}` : null}
+      logo={committee?.logo_url}
       loading={loading || !profile}
       cards={cards}>
       <EventPickerModal
