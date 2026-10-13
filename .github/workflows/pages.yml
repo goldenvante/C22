@@ -39,20 +39,21 @@ jobs:
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-      - name: Report export failure
+      - name: Fallback for deep links
+        run: |
+          ls -la dist-web
+          cp dist-web/index.html dist-web/404.html
+      - name: Report failure
         if: failure()
         run: |
-          if [ -f export.log ]; then
-            echo "::error::$(tail -n 20 export.log | tr '\n' ' ')"
-            echo "### Export web log (final)" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            tail -n 80 export.log >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::error::No existió export.log (falló antes de generar el log)."
-          fi
-      - name: Fallback for deep links
-        run: cp dist-web/index.html dist-web/404.html
+          {
+            echo "::error::Fallo un paso de la build web. dist-web: $(ls dist-web 2>&1 | tr '\n' ' ' | cut -c1-300) | export.log: $(tail -n 12 export.log 2>&1 | tr '\n' ' ' | cut -c1-600)"
+            echo "### Diagnostico"
+            echo '```'
+            echo "dist-web:"; ls -la dist-web 2>&1 | tail -40
+            echo "export.log (final):"; tail -n 60 export.log 2>&1
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist-web
