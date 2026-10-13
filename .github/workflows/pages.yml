@@ -25,39 +25,39 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Check Supabase env
+      - name: Prepare Supabase env
         run: |
           node -e '
-          const url = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
-          const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+          const fs = require("fs");
+          const rawUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+          const rawKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+          const clean = (s) => s.trim().replace(/^["\x27]+|["\x27]+$/g, "");
+          let url = clean(rawUrl);
+          const um = url.match(/https?:\/\/[^\s"\x27]+/);
+          if (um) url = um[0];
+          let key = clean(rawKey);
+          const km = key.match(/(eyJ[\w.-]+|sb_[\w-]+)/);
+          if (km) key = km[0];
           let msg = "";
-          if (!url) {
-            msg = "Falta el secret EXPO_PUBLIC_SUPABASE_URL.";
-          } else {
-            try {
-              const u = new URL(url);
-              if (u.protocol !== "https:") msg = "EXPO_PUBLIC_SUPABASE_URL no usa https.";
-            } catch {
-              msg = "EXPO_PUBLIC_SUPABASE_URL no es una URL valida.";
-            }
+          try {
+            const u = new URL(url);
+            if (u.protocol !== "https:") msg = "EXPO_PUBLIC_SUPABASE_URL no usa https.";
+          } catch {
+            msg = "EXPO_PUBLIC_SUPABASE_URL no es una URL valida.";
           }
           if (!msg && !(key.startsWith("eyJ") || key.startsWith("sb_"))) {
-            msg = "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY no parece una publishable key.";
+            msg = "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY no parece una publishable key (debe empezar por eyJ o sb_).";
           }
           if (msg) {
-            console.log("::error::" + msg + " Pega en el secret SOLO el valor, sin nombre de variable ni comillas. url_len=" + url.length + " key_len=" + key.length);
+            console.log("::error::" + msg + " url_len=" + rawUrl.length + " key_len=" + rawKey.length);
             process.exit(1);
           }
-          console.log("env OK url_len=" + url.length + " key_len=" + key.length + " (valores no impresos)");
+          fs.writeFileSync(".env", "EXPO_PUBLIC_SUPABASE_URL=" + url + "\nEXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=" + key + "\n");
+          if (url !== rawUrl || key !== rawKey) {
+            console.log("::warning::El secret venia con espacios/comillas de mas; se normalizo en la build. Corrigelo en Settings -> Secrets and variables -> Actions.");
+          }
+          console.log("env OK url_len=" + url.length + " key_len=" + key.length + " (originales url_len=" + rawUrl.length + " key_len=" + rawKey.length + ")");
           '
-        env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-      - name: Write .env for Expo
-        run: |
-          printf 'EXPO_PUBLIC_SUPABASE_URL=%s\nEXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' \
-            "$EXPO_PUBLIC_SUPABASE_URL" "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY" > .env
-          echo ".env escrito con url_len=${#EXPO_PUBLIC_SUPABASE_URL} key_len=${#EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY}"
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
