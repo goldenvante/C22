@@ -27,10 +27,26 @@ jobs:
         run: npm ci
       - name: Check Supabase env
         run: |
-          if [ -z "$EXPO_PUBLIC_SUPABASE_URL" ] || [ -z "$EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY" ]; then
-            echo "::error::Faltan los secrets EXPO_PUBLIC_SUPABASE_URL o EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY en Settings -> Secrets and variables -> Actions."
-            exit 1
-          fi
+          node -e '
+          const url = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+          const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+          let msg = "";
+          if (!url) msg = "Falta el secret EXPO_PUBLIC_SUPABASE_URL.";
+          else {
+            try {
+              const u = new URL(url);
+              if (u.protocol !== "https:") msg = "EXPO_PUBLIC_SUPABASE_URL no usa https.";
+            } catch {
+              msg = "EXPO_PUBLIC_SUPABASE_URL no es una URL valida.";
+            }
+          }
+          if (!msg && !key.startsWith("eyJ")) msg = "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY no parece JWT (debe empezar por eyJ).";
+          if (msg) {
+            console.log("::error::" + msg + " Pega en el secret SOLO el valor, sin nombre ni comillas. url_len=" + url.length + " key_len=" + key.length);
+            process.exit(1);
+          }
+          console.log("env OK (url_len=" + url.length + " key_len=" + key.length + ", valores no impresos)");
+          '
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
