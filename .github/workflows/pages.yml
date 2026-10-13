@@ -35,10 +35,22 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       - name: Export web
-        run: npx expo export --platform web --output-dir dist-web
+        run: npx expo export --platform web --output-dir dist-web 2>&1 | tee export.log
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      - name: Report export failure
+        if: failure()
+        run: |
+          if [ -f export.log ]; then
+            echo "::error::$(tail -n 20 export.log | tr '\n' ' ')"
+            echo "### Export web log (final)" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 80 export.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::No existió export.log (falló antes de generar el log)."
+          fi
       - name: Fallback for deep links
         run: cp dist-web/index.html dist-web/404.html
       - uses: actions/upload-pages-artifact@v3
